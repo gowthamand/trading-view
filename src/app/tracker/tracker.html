@@ -1,0 +1,169 @@
+<!-- Top bar -->
+<header class="topbar border-bottom bg-white">
+  <div class="container-fluid px-3 px-lg-4 d-flex align-items-center gap-3 py-3">
+    <a class="brand d-flex align-items-center gap-2 text-decoration-none">
+      <span class="brand-mark">MT</span><span class="d-none d-sm-inline">Market Tracker</span>
+    </a>
+    <div class="ms-auto d-flex align-items-center gap-2 gap-sm-3">
+      <div class="d-flex align-items-center gap-2">
+        <div class="avatar">GD</div>
+        <div class="d-none d-lg-block lh-sm"><div class="fw-semibold">Gowthaman D</div><small class="text-muted">My account</small></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container-fluid px-3 px-lg-4 py-4">
+
+  @if (md.error()) { <div class="alert alert-warning py-2">{{ md.error() }} — showing last known values.</div> }
+
+  <div class="row g-4">
+    <!-- Overview + chart -->
+    <div class="col-12 col-xl-8">
+      <section class="panel h-100 d-flex flex-column">
+        <div class="d-flex flex-wrap align-items-start gap-3">
+          <div class="me-auto">
+            <div class="label d-flex align-items-center gap-2">{{ chartDef().name }}
+              <span class="live-tag" [class.on]="chartDef().live"><i></i>{{ chartDef().live ? 'Live' : 'Loading' }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <div class="big-value">{{ chartDef().live ? (chartDef().last | number: '1.2-2') : '—' }}</div>
+            </div>
+            <div class="text-muted">Today
+              <span class="fw-semibold" [class.text-success]="chartDef().change >= 0" [class.text-danger]="chartDef().change < 0">{{ chartDef().change >= 0 ? '+' : '' }}{{ chartDef().change | number: '1.2-2' }}</span>
+              <span class="pill ms-1" [class.up]="chartDef().changePct > 0" [class.down]="chartDef().changePct < 0">{{ chartDef().changePct >= 0 ? '↑' : '↓' }} {{ abs(chartDef().changePct) | number: '1.2-2' }}%</span>
+            </div>
+          </div>
+          <div class="d-flex flex-column align-items-end gap-2 range-side">
+            <div class="d-flex align-items-center gap-2">
+              @if (periodChange(); as p) {
+            <span class="small text-muted">{{ range() }} change</span>
+            <span class="pill" [class.up]="p.pct >= 0" [class.down]="p.pct < 0">{{ p.pct >= 0 ? '↑' : '↓' }} {{ abs(p.pct) | number: '1.2-2' }}%</span>
+          }
+            </div>
+          <div class="range-bar">
+            @for (r of ranges; track r) { <button class="btn btn-outline-secondary range-btn" [class.active]="range() === r" (click)="setRange(r)">{{ r }}</button> }
+          </div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart mt-3 d-flex flex-grow-1" [class.loading]="chartLoading()" [style.--trend]="trendColor()">
+          <div class="y-axis d-flex flex-column justify-content-between">@for (t of yTicks(); track $index) { <span>{{ tickLabel(t) }}</span> }</div>
+          <div class="flex-grow-1 d-flex flex-column" style="min-width:0">
+            <div class="plot position-relative flex-grow-1" (mousemove)="onChartMove($event)" (mouseleave)="hover.set(-1)">
+              @if (series().length) {
+                <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none">
+                  <defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" [attr.stop-color]="trendColor()" stop-opacity=".22"/><stop offset="1" [attr.stop-color]="trendColor()" stop-opacity="0"/></linearGradient></defs>
+                  @for (t of yTicks(); track $index) { <line x1="0" [attr.x2]="W" [attr.y1]="py(t)" [attr.y2]="py(t)" class="grid"/> }
+                  <path [attr.d]="path().area" fill="url(#fill)" stroke="none"/>
+                  <path [attr.d]="path().line" class="stroke" vector-effect="non-scaling-stroke"/>
+                  <line [attr.x1]="px(hoverIdx())" [attr.x2]="px(hoverIdx())" y1="0" [attr.y2]="H" class="cursor" vector-effect="non-scaling-stroke"/>
+                </svg>
+                @if (hoverPoint(); as hp) {
+                  <span class="marker" [style.left.%]="px(hoverIdx()) / W * 100" [style.top.%]="py(hp.c) / H * 100"></span>
+                  <div class="tip" [style.left.%]="px(hoverIdx()) / W * 100" [style.top.%]="py(hp.c) / H * 100" [class.flip]="hoverIdx() > series().length / 2">
+                    <b>{{ hp.c | number: '1.2-2' }}</b><small>Close | {{ hp.t | date: rangeCfg().tip }}</small>
+                  </div>
+                }
+              } @else {
+                <div class="h-100 d-grid place-center text-muted">{{ chartLoading() ? 'Loading chart…' : 'No chart data' }}</div>
+              }
+            </div>
+            <div class="x-axis d-flex justify-content-between">@for (p of xLabels(); track $index) { <span [class.d-none]="$index % 2" class="d-sm-inline">{{ p.t | date: rangeCfg().axis }}</span> }</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Watchlist -->
+    <div class="col-12 col-xl-4">
+      <section class="panel watchlist p-0 h-100 d-flex flex-column">
+        <div class="wl-head d-flex align-items-center">
+          <b class="me-auto d-inline-flex align-items-center gap-1">Watchlist <span class="caret"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span></b>
+          <span class="small text-muted">{{ md.loading() ? 'Refreshing…' : 'Live · 5s' }}</span>
+        </div>
+        <div class="wl-grid wl-cols"><span>Symbol</span><span>Last</span><span>Chg</span><span>Chg%</span></div>
+        <div class="wl-body flex-grow-1">
+          @for (g of watchGroups(); track g.name) {
+            <div class="wl-group" (click)="toggleWatchGroup(g.name)">
+              <span class="chev" [class.closed]="watchCollapsed().has(g.name)"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></span>{{ g.name }}
+            </div>
+            @if (!watchCollapsed().has(g.name)) {
+              @for (w of g.rows; track w.symbol) {
+                <div class="wl-grid wl-row" [class.selected]="w.symbol === chartSymbol()" (click)="selectChart(w.symbol)" [title]="w.name">
+                  <span class="wl-sym"><i class="wl-icon" [style.background]="w.color">{{ w.icon }}</i>{{ w.symbol }}</span>
+                  <span class="num">{{ w.head }}<span [class.text-success]="w.dir > 0" [class.text-danger]="w.dir < 0">{{ w.tail }}</span></span>
+                  <span class="num" [class.text-success]="w.change > 0" [class.text-danger]="w.change < 0">{{ w.live ? ((w.change < 0 ? '−' : '') + (abs(w.change) | number: '1.2-4')) : '—' }}</span>
+                  <span class="num" [class.text-success]="w.changePct > 0" [class.text-danger]="w.changePct < 0">{{ w.live ? ((w.changePct < 0 ? '−' : '') + (abs(w.changePct) | number: '1.2-2') + '%') : '—' }}</span>
+                </div>
+              }
+            }
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav tabs mt-4 mb-3 flex-nowrap overflow-auto">
+    @for (t of tabs; track t.key) {
+      <li class="nav-item"><button class="nav-link" [class.active]="tab() === t.key" (click)="setTab(t.key)">{{ t.label }}</button></li>
+    }
+  </ul>
+
+  <!-- Group cards -->
+  <div class="row g-3 g-lg-4">
+    @for (g of groups(); track g.name) {
+      <div class="col-12 col-sm-6 col-lg-3">
+        <section class="panel group-card">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <span class="g-icon" [style.background]="g.color">{{ g.name[0] }}</span>
+            <h3 class="fs-5 mb-0 me-auto">{{ g.name }}</h3><span class="text-muted">•••</span>
+          </div>
+          <div class="text-muted small mb-1">{{ g.count }} instruments</div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="mid-value">{{ g.avg >= 0 ? '+' : '' }}{{ g.avg | number: '1.2-2' }}%</span>
+            <span class="pill" [class.up]="g.avg >= 0" [class.down]="g.avg < 0">avg</span>
+          </div>
+        </section>
+      </div>
+    }
+  </div>
+
+  <!-- Table -->
+  <section class="panel p-0 mt-4 overflow-hidden">
+    <div class="d-flex flex-wrap align-items-center gap-2 p-3 p-md-4">
+      <h2 class="panel-title me-auto mb-0">{{ tabs[tabs.findIndex(t => t.key === tab())].label }}</h2>
+      <input class="form-control form-control-sm d-md-none" placeholder="Search..." (input)="onSearch($event)" [value]="query()">
+      <button class="btn btn-outline-secondary btn-sm btn-ghost">⤴ Export</button>
+      <button class="btn btn-outline-secondary btn-sm btn-ghost">☰ Filter</button>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th (click)="sort('symbol')">Name <span class="s">⇅</span></th>
+            <th class="d-none d-md-table-cell" (click)="sort('group')">Group <span class="s">⇅</span></th>
+            <th class="d-none d-sm-table-cell" (click)="sort('volume')">Volume <span class="s">⇅</span></th>
+            <th (click)="sort('changePct')">Change <span class="s">⇅</span></th>
+            <th class="text-end" (click)="sort('last')">Last <span class="s">⇅</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of rows(); track r.symbol) {
+            <tr class="clickable" (click)="selectChart(r.symbol)">
+              <td><div class="d-flex align-items-center gap-3"><span class="logo">{{ r.symbol.slice(0, 2) }}</span><div><div class="fw-semibold">{{ r.name }}</div><small class="text-muted">{{ r.symbol }}</small></div></div></td>
+              <td class="d-none d-md-table-cell">{{ r.group }}</td>
+              <td class="d-none d-sm-table-cell">{{ compact(r.volume) }}</td>
+              <td><span class="pill" [class.up]="r.changePct > 0" [class.down]="r.changePct < 0">{{ r.changePct > 0 ? '↑' : r.changePct < 0 ? '↓' : '' }} {{ abs(r.changePct) | number: '1.2-2' }}%</span></td>
+              <td class="text-end fw-semibold num">{{ r.live ? (r.last | number: '1.2-2') : '—' }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" class="text-center text-muted py-4">No matches</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>

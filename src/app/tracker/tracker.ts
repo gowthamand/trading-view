@@ -1,0 +1,300 @@
+import { Component, DestroyRef, afterNextRender, computed, inject, signal } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { MarketData, Point } from './market-data';
+
+/** Static definition; live numbers come from MarketData. `yahoo` is the feed ticker. */
+interface Def { symbol: string; yahoo: string; name: string; group: string; }
+
+export interface Instrument extends Def {
+  last: number;
+  change: number;
+  changePct: number;
+  volume: number;
+  live: boolean;
+}
+
+type Tab = 'indices' | 'futures' | 'commodities';
+type SortKey = 'symbol' | 'group' | 'last' | 'changePct' | 'volume';
+type Range = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y' | '5Y' | '10Y' | 'ALL';
+
+/** Button -> Yahoo range, bar interval and axis date format. */
+const RANGES: Record<Range, { range: string; interval: string; axis: string; tip: string }> = {
+  '1D': { range: '1d', interval: '5m', axis: 'HH:mm', tip: 'MMM d, HH:mm' },
+  '1W': { range: '5d', interval: '30m', axis: 'EEE d', tip: 'EEE MMM d, HH:mm' },
+  '1M': { range: '1mo', interval: '1d', axis: 'MMM d', tip: 'MMM d, y' },
+  '3M': { range: '3mo', interval: '1d', axis: 'MMM d', tip: 'MMM d, y' },
+  '6M': { range: '6mo', interval: '1d', axis: 'MMM d', tip: 'MMM d, y' },
+  '1Y': { range: '1y', interval: '1d', axis: 'MMM yy', tip: 'MMM d, y' },
+  '3Y': { range: '3y', interval: '1wk', axis: 'MMM yy', tip: 'MMM d, y' },
+  '5Y': { range: '5y', interval: '1wk', axis: 'MMM yy', tip: 'MMM d, y' },
+  '10Y': { range: '10y', interval: '1mo', axis: 'y', tip: 'MMM y' },
+  'ALL': { range: 'max', interval: '1mo', axis: 'y', tip: 'MMM y' },
+};
+
+@Component({
+  selector: 'app-tracker',
+  imports: [DecimalPipe, DatePipe],
+  templateUrl: './tracker.html',
+  styleUrl: './tracker.scss',
+})
+export class Tracker {
+  readonly md = inject(MarketData);
+
+  readonly tabs: { key: Tab; label: string }[] = [
+    { key: 'indices', label: 'Indices' },
+    { key: 'futures', label: 'Futures' },
+    { key: 'commodities', label: 'Commodities' },
+  ];
+
+  readonly defs: Record<Tab, Def[]> = {
+    indices: [
+      { symbol: 'NIFTY', yahoo: '^NSEI', name: 'Nifty 50', group: 'India' },
+      { symbol: 'SENSEX', yahoo: '^BSESN', name: 'BSE Sensex', group: 'India' },
+      { symbol: 'BANKNIFTY', yahoo: '^NSEBANK', name: 'Nifty Bank', group: 'India' },
+      { symbol: 'MIDCPNIFTY', yahoo: 'NIFTY_MID_SELECT.NS', name: 'Nifty Midcap Select', group: 'India' },
+      { symbol: 'FINNIFTY', yahoo: 'NIFTY_FIN_SERVICE.NS', name: 'Nifty Financial Services', group: 'India' },
+      { symbol: 'SPX', yahoo: '^GSPC', name: 'S&P 500', group: 'US' },
+      { symbol: 'DJI', yahoo: '^DJI', name: 'Dow Jones', group: 'US' },
+      { symbol: 'BANK', yahoo: '^BKX', name: 'KBW Nasdaq Bank', group: 'US' },
+      { symbol: 'IXIC', yahoo: '^IXIC', name: 'Nasdaq Composite', group: 'US' },
+      { symbol: 'NDX', yahoo: '^NDX', name: 'Nasdaq 100', group: 'US' },
+      { symbol: 'NI225', yahoo: '^N225', name: 'Nikkei 225', group: 'Asia' },
+      { symbol: 'HSI', yahoo: '^HSI', name: 'Hang Seng', group: 'Asia' },
+      { symbol: 'STI', yahoo: '^STI', name: 'Straits Times', group: 'Asia' },
+      { symbol: 'KOSPI', yahoo: '^KS11', name: 'KOSPI Composite', group: 'Asia' },
+      { symbol: 'SMI', yahoo: '^SSMI', name: 'Swiss Market Index', group: 'Europe' },
+      { symbol: 'FTSE', yahoo: '^FTSE', name: 'FTSE 100', group: 'Europe' },
+      { symbol: 'DAX', yahoo: '^GDAXI', name: 'DAX', group: 'Europe' },
+      { symbol: 'FRA40', yahoo: '^FCHI', name: 'CAC 40', group: 'Europe' },
+      { symbol: 'IBEX35', yahoo: '^IBEX', name: 'IBEX 35', group: 'Europe' },
+    ],
+    futures: [
+      { symbol: 'ES1!', yahoo: 'ES=F', name: 'E-mini S&P 500', group: 'US Index' },
+      { symbol: 'NQ1!', yahoo: 'NQ=F', name: 'E-mini Nasdaq 100', group: 'US Index' },
+      { symbol: 'YM1!', yahoo: 'YM=F', name: 'E-mini Dow', group: 'US Index' },
+      { symbol: 'RTY1!', yahoo: 'RTY=F', name: 'E-mini Russell 2000', group: 'US Index' },
+      { symbol: 'ZN1!', yahoo: 'ZN=F', name: '10-Year T-Note', group: 'Rates' },
+      { symbol: 'BTC1!', yahoo: 'BTC=F', name: 'Bitcoin Futures', group: 'Crypto' },
+    ],
+    commodities: [
+      { symbol: 'GC1!', yahoo: 'GC=F', name: 'Gold', group: 'Metals' },
+      { symbol: 'SI1!', yahoo: 'SI=F', name: 'Silver', group: 'Metals' },
+      { symbol: 'HG1!', yahoo: 'HG=F', name: 'Copper', group: 'Metals' },
+      { symbol: 'BRENT', yahoo: 'BZ=F', name: 'Brent Crude', group: 'Energy' },
+      { symbol: 'CL1!', yahoo: 'CL=F', name: 'WTI Crude', group: 'Energy' },
+      { symbol: 'NG1!', yahoo: 'NG=F', name: 'Natural Gas', group: 'Energy' },
+      { symbol: 'ZW1!', yahoo: 'ZW=F', name: 'Wheat', group: 'Agriculture' },
+      { symbol: 'ZC1!', yahoo: 'ZC=F', name: 'Corn', group: 'Agriculture' },
+    ],
+  };
+
+  /** Grouped watchlist (right panel). */
+  readonly watchDefs: { name: string; items: (Def & { icon: string; color: string })[] }[] = [
+    { name: 'INDIA INDEX', items: [
+      { symbol: 'NIFTY', yahoo: '^NSEI', name: 'Nifty 50', group: 'India', icon: '50', color: '#2a2e7a' },
+      { symbol: 'SENSEX', yahoo: '^BSESN', name: 'BSE Sensex', group: 'India', icon: 'BSE', color: '#2f8ae0' },
+      { symbol: 'BANKNIFTY', yahoo: '^NSEBANK', name: 'Nifty Bank', group: 'India', icon: 'BN', color: '#2a2e7a' },
+      { symbol: 'MIDCPNIFTY', yahoo: 'NIFTY_MID_SELECT.NS', name: 'Nifty Midcap Select', group: 'India', icon: 'MID', color: '#5b3cc4' },
+      { symbol: 'FINNIFTY', yahoo: 'NIFTY_FIN_SERVICE.NS', name: 'Nifty Financial Services', group: 'India', icon: 'FIN', color: '#0f8a5f' },
+    ]},
+    { name: 'COMMODITIES', items: [
+      { symbol: 'GC1!', yahoo: 'GC=F', name: 'Gold', group: 'Metals', icon: 'Au', color: '#e0a526' },
+      { symbol: 'SILVER1!', yahoo: 'SI=F', name: 'Silver', group: 'Metals', icon: 'Ag', color: '#a5a8b8' },
+      { symbol: 'BRENT', yahoo: 'BZ=F', name: 'Brent Crude', group: 'Energy', icon: '●', color: '#131722' },
+    ]},
+    { name: 'FOREX', items: [
+      { symbol: 'USDINR', yahoo: 'USDINR=X', name: 'US Dollar / Rupee', group: 'Forex', icon: '$', color: '#3c6bd8' },
+      { symbol: 'SGDINR', yahoo: 'SGDINR=X', name: 'Singapore Dollar / Rupee', group: 'Forex', icon: 'S$', color: '#e04646' },
+      { symbol: 'BTCUSD', yahoo: 'BTC-USD', name: 'Bitcoin / US Dollar', group: 'Crypto', icon: '₿', color: '#f7931a' },
+      { symbol: 'USDCNY', yahoo: 'USDCNY=X', name: 'US Dollar / Yuan', group: 'Forex', icon: '¥', color: '#d93b3b' },
+      { symbol: 'DXY', yahoo: 'DX-Y.NYB', name: 'US Dollar Index', group: 'Forex', icon: '$', color: '#0f8a5f' },
+    ]},
+    { name: 'US INDEX', items: [
+      { symbol: 'SPX', yahoo: '^GSPC', name: 'S&P 500', group: 'US', icon: '500', color: '#d9262f' },
+      { symbol: 'DJI', yahoo: '^DJI', name: 'Dow Jones', group: 'US', icon: '30', color: '#1e9bd7' },
+      { symbol: 'BANK', yahoo: '^BKX', name: 'KBW Nasdaq Bank', group: 'US', icon: 'B', color: '#9aa0ae' },
+      { symbol: 'IXIC', yahoo: '^IXIC', name: 'Nasdaq Composite', group: 'US', icon: 'IX', color: '#2f7fb8' },
+      { symbol: 'NDX', yahoo: '^NDX', name: 'Nasdaq 100', group: 'US', icon: '100', color: '#2f7fb8' },
+    ]},
+    { name: 'ASIA INDEX', items: [
+      { symbol: 'NI225', yahoo: '^N225', name: 'Nikkei 225', group: 'Asia', icon: '225', color: '#2a3f7a' },
+      { symbol: 'HSI', yahoo: '^HSI', name: 'Hang Seng', group: 'Asia', icon: 'HS', color: '#c8102e' },
+      { symbol: 'STI', yahoo: '^STI', name: 'Straits Times', group: 'Asia', icon: 'STI', color: '#1d2a5c' },
+      { symbol: 'KOSPI', yahoo: '^KS11', name: 'KOSPI Composite', group: 'Asia', icon: 'KS', color: '#4aa3d8' },
+    ]},
+    { name: 'EUROPE INDEX', items: [
+      { symbol: 'SMI', yahoo: '^SSMI', name: 'Swiss Market Index', group: 'Europe', icon: 'SMI', color: '#c0392b' },
+      { symbol: 'FTSE', yahoo: '^FTSE', name: 'FTSE 100', group: 'Europe', icon: '100', color: '#3d5a80' },
+      { symbol: 'DAX', yahoo: '^GDAXI', name: 'DAX', group: 'Europe', icon: 'DAX', color: '#3c5fb0' },
+      { symbol: 'FRA40', yahoo: '^FCHI', name: 'CAC 40', group: 'Europe', icon: '40', color: '#2f7d6d' },
+      { symbol: 'IBEX35', yahoo: '^IBEX', name: 'IBEX 35', group: 'Europe', icon: '35', color: '#1d2a5c' },
+    ]},
+  ];
+  readonly watchCollapsed = signal<Set<string>>(new Set());
+
+  readonly tab = signal<Tab>('indices');
+  readonly query = signal('');
+  readonly sortKey = signal<SortKey>('symbol');
+  readonly sortAsc = signal(true);
+
+  /** Merge static defs with the latest quotes. */
+  private withQuotes(list: Def[]): Instrument[] {
+    const q = this.md.quotes();
+    return list.map((d) => {
+      const x = q[d.yahoo];
+      return { ...d, last: x?.price ?? 0, change: x?.change ?? 0, changePct: x?.changePct ?? 0, volume: x?.volume ?? 0, live: !!x };
+    });
+  }
+
+  readonly data = computed(() => ({
+    indices: this.withQuotes(this.defs.indices),
+    futures: this.withQuotes(this.defs.futures),
+    commodities: this.withQuotes(this.defs.commodities),
+  }));
+  readonly all = computed(() => [...this.data().indices, ...this.data().futures, ...this.data().commodities]);
+  readonly liveAll = computed(() => this.all().filter((r) => r.live));
+  readonly gainers = computed(() => this.liveAll().filter((r) => r.changePct > 0).length);
+  readonly best = computed(() => this.liveAll().reduce<Instrument | null>((a, b) => (!a || b.changePct > a.changePct ? b : a), null));
+  readonly watchGroups = computed(() =>
+    this.watchDefs.map((g) => ({
+      name: g.name,
+      rows: this.withQuotes(g.items).map((r) => ({ ...r, icon: (r as any).icon as string, color: (r as any).color as string, ...this.tick(r.yahoo, r.last) })),
+    })),
+  );
+  /** Every instrument shown anywhere, for chart lookups. */
+  readonly everything = computed(() => [...this.all(), ...this.watchGroups().flatMap((g) => g.rows)]);
+
+  /** Split the price into an unchanged prefix and a changed suffix, plus tick direction. */
+  private tick(yahoo: string, last: number) {
+    const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    const now = last ? fmt(last) : '—';
+    const prev = this.md.prevQuotes()[yahoo]?.price;
+    if (!prev || prev === last) return { head: now, tail: '', dir: 0 };
+    const p = fmt(prev);
+    let i = 0;
+    while (i < now.length && now[i] === p[i]) i++;
+    return { head: now.slice(0, i), tail: now.slice(i), dir: last > prev ? 1 : -1 };
+  }
+
+  toggleWatchGroup(name: string) {
+    const s = new Set(this.watchCollapsed());
+    s.has(name) ? s.delete(name) : s.add(name);
+    this.watchCollapsed.set(s);
+  }
+
+  readonly groups = computed(() => {
+    const map = new Map<string, Instrument[]>();
+    for (const r of this.data()[this.tab()]) map.set(r.group, [...(map.get(r.group) ?? []), r]);
+    return [...map].map(([name, list], i) => {
+      const live = list.filter((r) => r.live);
+      return {
+        name,
+        count: list.length,
+        avg: live.length ? live.reduce((s, r) => s + r.changePct, 0) / live.length : 0,
+        color: ['#ff6b3d', '#3b5bfd', '#1fb6e8', '#8b3dff'][i % 4],
+      };
+    });
+  });
+
+  readonly rows = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    const key = this.sortKey();
+    const dir = this.sortAsc() ? 1 : -1;
+    return this.data()[this.tab()]
+      .filter((r) => !q || `${r.symbol} ${r.name} ${r.group}`.toLowerCase().includes(q))
+      .sort((a, b) => (a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0) * dir);
+  });
+
+  // ---- Chart (history for the selected instrument) ----
+  readonly ranges = Object.keys(RANGES) as Range[];
+  readonly rangeCfg = computed(() => RANGES[this.range()]);
+  readonly chartSymbol = signal('NIFTY');
+  readonly range = signal<Range>('1D');
+  readonly series = signal<Point[]>([]);
+  readonly chartLoading = signal(false);
+  readonly hover = signal(-1);
+  readonly W = 800; readonly H = 220;
+
+  readonly chartDef = computed(() => this.everything().find((r) => r.symbol === this.chartSymbol())!);
+  readonly bounds = computed(() => {
+    const v = this.series().map((p) => p.c);
+    if (!v.length) return { lo: 0, hi: 1 };
+    const lo = Math.min(...v), hi = Math.max(...v), pad = (hi - lo) * 0.1 || hi * 0.01;
+    return { lo: lo - pad, hi: hi + pad };
+  });
+  readonly yTicks = computed(() => {
+    const { lo, hi } = this.bounds();
+    return [0, 1, 2, 3].map((i) => hi - ((hi - lo) * i) / 3);
+  });
+  readonly path = computed(() => {
+    const s = this.series();
+    const line = s.map((p, i) => `${i ? 'L' : 'M'}${this.px(i).toFixed(1)},${this.py(p.c).toFixed(1)}`).join('');
+    return { line, area: s.length ? `${line}L${this.W},${this.H}L0,${this.H}Z` : '' };
+  });
+  readonly hoverIdx = computed(() => (this.hover() >= 0 ? this.hover() : this.series().length - 1));
+  readonly hoverPoint = computed(() => this.series()[this.hoverIdx()]);
+  readonly xLabels = computed(() => {
+    const s = this.series();
+    const n = Math.min(8, s.length);
+    return Array.from({ length: n }, (_, i) => s[Math.round((i * (s.length - 1)) / Math.max(1, n - 1))]);
+  });
+  readonly periodChange = computed(() => {
+    const s = this.series();
+    if (s.length < 2) return null;
+    const a = s[0].c, b = s[s.length - 1].c;
+    return { abs: b - a, pct: ((b - a) / a) * 100 };
+  });
+
+  /** Green when the selected period is up, red when down. */
+  readonly trendColor = computed(() => ((this.periodChange()?.pct ?? 0) >= 0 ? '#16a34a' : '#e11d48'));
+
+  px = (i: number) => (i / Math.max(1, this.series().length - 1)) * this.W;
+  py = (v: number) => { const { lo, hi } = this.bounds(); return this.H - ((v - lo) / (hi - lo)) * this.H; };
+
+  constructor() {
+    // Only fetch in the browser (not during server-side rendering)
+    afterNextRender(() => {
+      this.md.start([...new Set(this.everything().map((r) => r.yahoo))]);
+      this.loadHistory();
+    });
+    inject(DestroyRef).onDestroy(() => this.md.stop());
+  }
+
+  async loadHistory() {
+    this.chartLoading.set(true);
+    this.hover.set(-1);
+    try {
+      this.series.set(await this.md.history(this.chartDef().yahoo, this.rangeCfg().range, this.rangeCfg().interval));
+    } catch {
+      this.series.set([]);
+    } finally {
+      this.chartLoading.set(false);
+    }
+  }
+
+  selectChart(symbol: string) { this.chartSymbol.set(symbol); this.loadHistory(); }
+  setRange(r: Range) { this.range.set(r); this.loadHistory(); }
+  setTab(t: Tab) { this.tab.set(t); this.query.set(''); }
+  sort(k: SortKey) {
+    if (this.sortKey() === k) this.sortAsc.update((v) => !v);
+    else { this.sortKey.set(k); this.sortAsc.set(true); }
+  }
+  onSearch(e: Event) { this.query.set((e.target as HTMLInputElement).value); }
+  onChartMove(e: MouseEvent) {
+    const el = e.currentTarget as HTMLElement;
+    const n = this.series().length - 1;
+    const ratio = (e.clientX - el.getBoundingClientRect().left) / el.clientWidth;
+    this.hover.set(Math.max(0, Math.min(n, Math.round(ratio * n))));
+  }
+  /** Price-scale label with just enough decimals to keep ticks distinct. */
+  tickLabel(v: number) {
+    const { lo, hi } = this.bounds();
+    const step = (hi - lo) / 3;
+    const d = step >= 10 ? 0 : step >= 1 ? 1 : step >= 0.1 ? 2 : 4;
+    return v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  compact(n: number) {
+    return n ? new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n) : '—';
+  }
+  abs(n: number) { return Math.abs(n); }
+}
