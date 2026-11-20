@@ -15,7 +15,7 @@ export interface Instrument extends Def {
   live: boolean;
 }
 
-type Tab = 'indices' | 'futures' | 'commodities' | 'stocks';
+type Tab = 'indices' | 'futures' | 'commodities' | 'stocks' | 'currencies';
 type SortKey = 'symbol' | 'group' | 'last' | 'changePct' | 'volume' | 'high52' | 'low52';
 type Range = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y' | '5Y' | '10Y' | 'ALL';
 
@@ -78,6 +78,7 @@ export class Tracker {
     { key: 'futures', label: 'Futures' },
     { key: 'commodities', label: 'Commodities' },
     { key: 'stocks', label: 'Stocks' },
+    { key: 'currencies', label: 'Currencies' },
   ];
 
   readonly defs: Record<Tab, Def[]> = {
@@ -102,6 +103,21 @@ export class Tracker {
       { symbol: 'NDX', yahoo: '^NDX', name: 'Nasdaq 100', group: 'US' },
       { symbol: 'RUT', yahoo: '^RUT', name: 'Russell 2000', group: 'US' },
       { symbol: 'VIX', yahoo: '^VIX', name: 'CBOE Volatility Index', group: 'US' },
+      { symbol: 'RUI', yahoo: '^RUI', name: 'Russell 1000', group: 'US' },
+      { symbol: 'RUA', yahoo: '^RUA', name: 'Russell 3000', group: 'US' },
+      { symbol: 'SP400', yahoo: '^SP400', name: 'S&P MidCap 400', group: 'US' },
+      { symbol: 'SP600', yahoo: '^SP600', name: 'S&P SmallCap 600', group: 'US' },
+      { symbol: 'SPXEW', yahoo: '^SPXEW', name: 'S&P 500 Equal Weight', group: 'US' },
+      { symbol: 'NDXE', yahoo: '^NDXE', name: 'Nasdaq 100 Equal Weight', group: 'US' },
+      { symbol: 'W5000', yahoo: '^W5000', name: 'Wilshire 5000', group: 'US' },
+      { symbol: 'NYA', yahoo: '^NYA', name: 'NYSE Composite', group: 'US' },
+      { symbol: 'XAX', yahoo: '^XAX', name: 'NYSE American Composite', group: 'US' },
+      { symbol: 'DJT', yahoo: '^DJT', name: 'Dow Jones Transportation', group: 'US' },
+      { symbol: 'DJU', yahoo: '^DJU', name: 'Dow Jones Utilities', group: 'US' },
+      { symbol: 'SOX', yahoo: '^SOX', name: 'PHLX Semiconductor', group: 'US' },
+      { symbol: 'NBI', yahoo: '^NBI', name: 'Nasdaq Biotechnology', group: 'US' },
+      { symbol: 'HUI', yahoo: '^HUI', name: 'NYSE Arca Gold Bugs', group: 'US' },
+      { symbol: 'XOI', yahoo: '^XOI', name: 'NYSE Arca Oil', group: 'US' },
       { symbol: 'NI225', yahoo: '^N225', name: 'Nikkei 225', group: 'Asia' },
       { symbol: 'HSI', yahoo: '^HSI', name: 'Hang Seng', group: 'Asia' },
       { symbol: 'STI', yahoo: '^STI', name: 'Straits Times', group: 'Asia' },
@@ -118,17 +134,13 @@ export class Tracker {
       { symbol: 'AEX', yahoo: '^AEX', name: 'AEX', group: 'Europe' },
     ],
     futures: [
-      { symbol: 'ES1!', yahoo: 'ES=F', name: 'E-mini S&P 500', group: 'US Index' },
-      { symbol: 'NQ1!', yahoo: 'NQ=F', name: 'E-mini Nasdaq 100', group: 'US Index' },
-      { symbol: 'YM1!', yahoo: 'YM=F', name: 'E-mini Dow', group: 'US Index' },
-      { symbol: 'RTY1!', yahoo: 'RTY=F', name: 'E-mini Russell 2000', group: 'US Index' },
       { symbol: 'NKD1!', yahoo: 'NKD=F', name: 'Nikkei 225 (USD)', group: 'Global Index' },
+      { symbol: 'NIY1!', yahoo: 'NIY=F', name: 'Nikkei 225 (Yen)', group: 'Global Index' },
+      { symbol: 'MNI1!', yahoo: 'MNI=F', name: 'Micro Nikkei (Yen)', group: 'Global Index' },
       { symbol: 'ZN1!', yahoo: 'ZN=F', name: '10-Year T-Note', group: 'Rates' },
       { symbol: 'ZT1!', yahoo: 'ZT=F', name: '2-Year T-Note', group: 'Rates' },
       { symbol: 'ZF1!', yahoo: 'ZF=F', name: '5-Year T-Note', group: 'Rates' },
       { symbol: 'ZB1!', yahoo: 'ZB=F', name: '30-Year T-Bond', group: 'Rates' },
-      { symbol: '6E1!', yahoo: '6E=F', name: 'Euro FX', group: 'Currency' },
-      { symbol: '6J1!', yahoo: '6J=F', name: 'Japanese Yen', group: 'Currency' },
       { symbol: 'MGC1!', yahoo: 'MGC=F', name: 'Micro Gold', group: 'Metals' },
       { symbol: 'BTC1!', yahoo: 'BTC=F', name: 'Bitcoin Futures', group: 'Crypto' },
       { symbol: 'ETH1!', yahoo: 'ETH=F', name: 'Ether Futures', group: 'Crypto' },
@@ -195,6 +207,33 @@ export class Tracker {
       { symbol: 'GOOGL', yahoo: 'GOOGL', name: 'Alphabet', group: 'US' },
       { symbol: 'META', yahoo: 'META', name: 'Meta Platforms', group: 'US' },
       { symbol: 'TSLA', yahoo: 'TSLA', name: 'Tesla', group: 'US' },
+    ],
+    currencies: [
+      { symbol: 'USDINR', yahoo: 'USDINR=X', name: 'US Dollar / Rupee', group: 'INR' },
+      { symbol: 'EURINR', yahoo: 'EURINR=X', name: 'Euro / Rupee', group: 'INR' },
+      { symbol: 'GBPINR', yahoo: 'GBPINR=X', name: 'British Pound / Rupee', group: 'INR' },
+      { symbol: 'JPYINR', yahoo: 'JPYINR=X', name: 'Japanese Yen / Rupee', group: 'INR' },
+      { symbol: 'SGDINR', yahoo: 'SGDINR=X', name: 'Singapore Dollar / Rupee', group: 'INR' },
+      { symbol: 'AEDINR', yahoo: 'AEDINR=X', name: 'UAE Dirham / Rupee', group: 'INR' },
+      { symbol: 'AUDINR', yahoo: 'AUDINR=X', name: 'Australian Dollar / Rupee', group: 'INR' },
+      { symbol: 'CADINR', yahoo: 'CADINR=X', name: 'Canadian Dollar / Rupee', group: 'INR' },
+      { symbol: 'CHFINR', yahoo: 'CHFINR=X', name: 'Swiss Franc / Rupee', group: 'INR' },
+      { symbol: 'CNYINR', yahoo: 'CNYINR=X', name: 'Chinese Yuan / Rupee', group: 'INR' },
+      { symbol: 'EURUSD', yahoo: 'EURUSD=X', name: 'Euro / US Dollar', group: 'Majors' },
+      { symbol: 'GBPUSD', yahoo: 'GBPUSD=X', name: 'British Pound / US Dollar', group: 'Majors' },
+      { symbol: 'USDJPY', yahoo: 'USDJPY=X', name: 'US Dollar / Yen', group: 'Majors' },
+      { symbol: 'AUDUSD', yahoo: 'AUDUSD=X', name: 'Australian Dollar / US Dollar', group: 'Majors' },
+      { symbol: 'USDCAD', yahoo: 'USDCAD=X', name: 'US Dollar / Canadian Dollar', group: 'Majors' },
+      { symbol: 'USDCHF', yahoo: 'USDCHF=X', name: 'US Dollar / Swiss Franc', group: 'Majors' },
+      { symbol: 'NZDUSD', yahoo: 'NZDUSD=X', name: 'New Zealand Dollar / US Dollar', group: 'Majors' },
+      { symbol: 'USDCNY', yahoo: 'USDCNY=X', name: 'US Dollar / Yuan', group: 'Majors' },
+      { symbol: 'USDSGD', yahoo: 'USDSGD=X', name: 'US Dollar / Singapore Dollar', group: 'Majors' },
+      { symbol: 'USDHKD', yahoo: 'USDHKD=X', name: 'US Dollar / Hong Kong Dollar', group: 'Majors' },
+      { symbol: 'DXY', yahoo: 'DX-Y.NYB', name: 'US Dollar Index', group: 'Majors' },
+      { symbol: 'BTCUSD', yahoo: 'BTC-USD', name: 'Bitcoin / US Dollar', group: 'Crypto' },
+      { symbol: 'ETHUSD', yahoo: 'ETH-USD', name: 'Ether / US Dollar', group: 'Crypto' },
+      { symbol: 'SOLUSD', yahoo: 'SOL-USD', name: 'Solana / US Dollar', group: 'Crypto' },
+      { symbol: 'XRPUSD', yahoo: 'XRP-USD', name: 'XRP / US Dollar', group: 'Crypto' },
     ],
   };
 
@@ -281,8 +320,9 @@ export class Tracker {
     futures: this.withQuotes(this.defs.futures),
     commodities: this.withQuotes(this.defs.commodities),
     stocks: this.withQuotes(this.defs.stocks),
+    currencies: this.withQuotes(this.defs.currencies),
   }));
-  readonly all = computed(() => [...this.data().indices, ...this.data().futures, ...this.data().commodities, ...this.data().stocks]);
+  readonly all = computed(() => [...this.data().indices, ...this.data().futures, ...this.data().commodities, ...this.data().stocks, ...this.data().currencies]);
   readonly liveAll = computed(() => this.all().filter((r) => r.live));
   readonly gainers = computed(() => this.liveAll().filter((r) => r.changePct > 0).length);
   readonly best = computed(() => this.liveAll().reduce<Instrument | null>((a, b) => (!a || b.changePct > a.changePct ? b : a), null));

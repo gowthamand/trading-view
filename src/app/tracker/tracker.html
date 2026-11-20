@@ -171,7 +171,7 @@
               <td><div class="d-flex align-items-center gap-2">@if (logoUrl(r.symbol) && !brokenLogos().has(r.symbol)) {<img class="logo logo-img" [src]="logoUrl(r.symbol)" alt="" loading="lazy" (error)="logoFailed(r.symbol)">} @else {@let b = badge(r.symbol, r.yahoo);<span class="logo logo-color" [style.background]="b.color">{{ b.icon }}</span>}<div><div class="fw-semibold">{{ r.name }}</div><small class="text-muted">{{ r.symbol }}</small></div></div></td>
               <td class="d-none d-sm-table-cell">{{ compact(r.volume) }}</td>
               <td><span class="pill" [class.up]="r.changePct > 0" [class.down]="r.changePct < 0">{{ r.changePct > 0 ? '↑' : r.changePct < 0 ? '↓' : '' }} {{ abs(r.changePct) | number: '1.2-2' }}%</span></td>
-              <td class="text-end fw-semibold num">{{ r.live ? (r.last | number: '1.2-2') : '—' }}</td>
+              <td class="text-end fw-semibold num">{{ r.live ? (r.last | number: r.last < 10 ? '1.2-4' : '1.2-2') : '—' }}</td>
               <td class="text-end d-none d-md-table-cell num">{{ r.high52 ? (r.high52 | number: '1.2-2') : '—' }}</td>
               <td class="text-end d-none d-md-table-cell num">{{ r.low52 ? (r.low52 | number: '1.2-2') : '—' }}</td>
             </tr>
