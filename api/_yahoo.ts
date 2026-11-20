@@ -37,7 +37,7 @@ function previousClose(r: any): number | undefined {
 
 /** symbols=^NSEI,GC=F -> latest price, change, volume */
 export async function getQuotes(symbolsParam: string | null | undefined) {
-  const symbols = String(symbolsParam ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50);
+  const symbols = String(symbolsParam ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 120);
   return Promise.all(
     symbols.map(async (symbol) => {
       try {
@@ -53,6 +53,8 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
           change: price - prev,
           changePct: prev ? ((price - prev) / prev) * 100 : 0,
           volume: m.regularMarketVolume ?? 0,
+          high52: m.fiftyTwoWeekHigh ?? 0,
+          low52: m.fiftyTwoWeekLow ?? 0,
           currency: m.currency ?? '',
           time: (m.regularMarketTime ?? 0) * 1000,
         };

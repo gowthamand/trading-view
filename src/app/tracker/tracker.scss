@@ -57,7 +57,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
     &:hover { color: var(--text); } &.active { color: var(--primary); background: #eef4ff; border-bottom-color: var(--primary); } } }
 
 /* Group cards */
-.group-card { transition: box-shadow .2s, transform .2s; &:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(17, 24, 39, .06); } }
+.group-card { cursor: pointer; border: 2px solid transparent; transition: box-shadow .2s, transform .2s, border-color .2s; &.selected { border-color: #3b5bfd; } &:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(17, 24, 39, .06); } }
 .g-icon { width: 44px; height: 44px; border-radius: 50%; color: #fff; font-weight: 700; display: grid; place-items: center; }
 
 /* Table */

@@ -10,11 +10,13 @@ export interface Instrument extends Def {
   change: number;
   changePct: number;
   volume: number;
+  high52: number;
+  low52: number;
   live: boolean;
 }
 
-type Tab = 'indices' | 'futures' | 'commodities';
-type SortKey = 'symbol' | 'group' | 'last' | 'changePct' | 'volume';
+type Tab = 'indices' | 'futures' | 'commodities' | 'stocks';
+type SortKey = 'symbol' | 'group' | 'last' | 'changePct' | 'volume' | 'high52' | 'low52';
 type Range = '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y' | '5Y' | '10Y' | 'ALL';
 
 /** Button -> Yahoo range, bar interval and axis date format. */
@@ -44,6 +46,7 @@ export class Tracker {
     { key: 'indices', label: 'Indices' },
     { key: 'futures', label: 'Futures' },
     { key: 'commodities', label: 'Commodities' },
+    { key: 'stocks', label: 'Stocks' },
   ];
 
   readonly defs: Record<Tab, Def[]> = {
@@ -85,6 +88,46 @@ export class Tracker {
       { symbol: 'NG1!', yahoo: 'NG=F', name: 'Natural Gas', group: 'Energy' },
       { symbol: 'ZW1!', yahoo: 'ZW=F', name: 'Wheat', group: 'Agriculture' },
       { symbol: 'ZC1!', yahoo: 'ZC=F', name: 'Corn', group: 'Agriculture' },
+    ],
+    stocks: [
+      { symbol: 'RELIANCE', yahoo: 'RELIANCE.NS', name: 'Reliance Industries', group: 'India' },
+      { symbol: 'TCS', yahoo: 'TCS.NS', name: 'Tata Consultancy Services', group: 'India' },
+      { symbol: 'HDFCBANK', yahoo: 'HDFCBANK.NS', name: 'HDFC Bank', group: 'India' },
+      { symbol: 'ICICIBANK', yahoo: 'ICICIBANK.NS', name: 'ICICI Bank', group: 'India' },
+      { symbol: 'INFY', yahoo: 'INFY.NS', name: 'Infosys', group: 'India' },
+      { symbol: 'SBIN', yahoo: 'SBIN.NS', name: 'State Bank of India', group: 'India' },
+      { symbol: 'BHARTIARTL', yahoo: 'BHARTIARTL.NS', name: 'Bharti Airtel', group: 'India' },
+      { symbol: 'ITC', yahoo: 'ITC.NS', name: 'ITC', group: 'India' },
+      { symbol: 'LT', yahoo: 'LT.NS', name: 'Larsen & Toubro', group: 'India' },
+      { symbol: 'TMCV', yahoo: 'TMCV.NS', name: 'Tata Motors', group: 'India' },
+      { symbol: 'SOUTHBANK', yahoo: 'SOUTHBANK.NS', name: 'South Indian Bank', group: 'India' },
+      { symbol: 'FUSION', yahoo: 'FUSION.NS', name: 'Fusion Finance', group: 'India' },
+      { symbol: 'TATASTEEL', yahoo: 'TATASTEEL.NS', name: 'Tata Steel', group: 'India' },
+      { symbol: 'TMB', yahoo: 'TMB.NS', name: 'Tamilnad Mercantile Bank', group: 'India' },
+      { symbol: 'ARE&M', yahoo: 'ARE&M.NS', name: 'Amara Raja Energy & Mobility', group: 'India' },
+      { symbol: 'TATACHEM', yahoo: 'TATACHEM.NS', name: 'Tata Chemicals', group: 'India' },
+      { symbol: 'MANAPPURAM', yahoo: 'MANAPPURAM.NS', name: 'Manappuram Finance', group: 'India' },
+      { symbol: 'KTKBANK', yahoo: 'KTKBANK.NS', name: 'Karnataka Bank', group: 'India' },
+      { symbol: 'PETRONET', yahoo: 'PETRONET.NS', name: 'Petronet LNG', group: 'India' },
+      { symbol: 'DRREDDY', yahoo: 'DRREDDY.NS', name: "Dr. Reddy's Laboratories", group: 'India' },
+      { symbol: 'SENCO', yahoo: 'SENCO.NS', name: 'Senco Gold', group: 'India' },
+      { symbol: 'JYOTHYLAB', yahoo: 'JYOTHYLAB.NS', name: 'Jyothy Labs', group: 'India' },
+      { symbol: 'NATCOPHARM', yahoo: 'NATCOPHARM.NS', name: 'NATCO Pharma', group: 'India' },
+      { symbol: 'WIPRO', yahoo: 'WIPRO.NS', name: 'Wipro', group: 'India' },
+      { symbol: 'ZYDUSLIFE', yahoo: 'ZYDUSLIFE.NS', name: 'Zydus Lifesciences', group: 'India' },
+      { symbol: 'BIOCON', yahoo: 'BIOCON.NS', name: 'Biocon', group: 'India' },
+      { symbol: 'TMPV', yahoo: 'TMPV.NS', name: 'Tata Motors Passenger Vehicles', group: 'India' },
+      { symbol: 'ITCHOTELS', yahoo: 'ITCHOTELS.NS', name: 'ITC Hotels', group: 'India' },
+      { symbol: 'IDFCFIRSTB', yahoo: 'IDFCFIRSTB.NS', name: 'IDFC First Bank', group: 'India' },
+      { symbol: 'SPANDANA', yahoo: 'SPANDANA.NS', name: 'Spandana Sphoorty Financial', group: 'India' },
+      { symbol: 'INDUSINDBK', yahoo: 'INDUSINDBK.NS', name: 'IndusInd Bank', group: 'India' },
+      { symbol: 'AAPL', yahoo: 'AAPL', name: 'Apple', group: 'US' },
+      { symbol: 'MSFT', yahoo: 'MSFT', name: 'Microsoft', group: 'US' },
+      { symbol: 'NVDA', yahoo: 'NVDA', name: 'NVIDIA', group: 'US' },
+      { symbol: 'AMZN', yahoo: 'AMZN', name: 'Amazon', group: 'US' },
+      { symbol: 'GOOGL', yahoo: 'GOOGL', name: 'Alphabet', group: 'US' },
+      { symbol: 'META', yahoo: 'META', name: 'Meta Platforms', group: 'US' },
+      { symbol: 'TSLA', yahoo: 'TSLA', name: 'Tesla', group: 'US' },
     ],
   };
 
@@ -142,7 +185,7 @@ export class Tracker {
     const q = this.md.quotes();
     return list.map((d) => {
       const x = q[d.yahoo];
-      return { ...d, last: x?.price ?? 0, change: x?.change ?? 0, changePct: x?.changePct ?? 0, volume: x?.volume ?? 0, live: !!x };
+      return { ...d, last: x?.price ?? 0, change: x?.change ?? 0, changePct: x?.changePct ?? 0, volume: x?.volume ?? 0, high52: x?.high52 ?? 0, low52: x?.low52 ?? 0, live: !!x };
     });
   }
 
@@ -150,8 +193,9 @@ export class Tracker {
     indices: this.withQuotes(this.defs.indices),
     futures: this.withQuotes(this.defs.futures),
     commodities: this.withQuotes(this.defs.commodities),
+    stocks: this.withQuotes(this.defs.stocks),
   }));
-  readonly all = computed(() => [...this.data().indices, ...this.data().futures, ...this.data().commodities]);
+  readonly all = computed(() => [...this.data().indices, ...this.data().futures, ...this.data().commodities, ...this.data().stocks]);
   readonly liveAll = computed(() => this.all().filter((r) => r.live));
   readonly gainers = computed(() => this.liveAll().filter((r) => r.changePct > 0).length);
   readonly best = computed(() => this.liveAll().reduce<Instrument | null>((a, b) => (!a || b.changePct > a.changePct ? b : a), null));
@@ -196,11 +240,17 @@ export class Tracker {
     });
   });
 
+  /** Group card selected to filter the table (e.g. India / US); null shows all. */
+  readonly groupFilter = signal<string | null>(null);
+  toggleGroup(name: string) { this.groupFilter.set(this.groupFilter() === name ? null : name); }
+
   readonly rows = computed(() => {
     const q = this.query().trim().toLowerCase();
     const key = this.sortKey();
     const dir = this.sortAsc() ? 1 : -1;
+    const g = this.groupFilter();
     return this.data()[this.tab()]
+      .filter((r) => !g || r.group === g)
       .filter((r) => !q || `${r.symbol} ${r.name} ${r.group}`.toLowerCase().includes(q))
       .sort((a, b) => (a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0) * dir);
   });
@@ -274,7 +324,7 @@ export class Tracker {
 
   selectChart(symbol: string) { this.chartSymbol.set(symbol); this.loadHistory(); }
   setRange(r: Range) { this.range.set(r); this.loadHistory(); }
-  setTab(t: Tab) { this.tab.set(t); this.query.set(''); }
+  setTab(t: Tab) { this.tab.set(t); this.query.set(''); this.groupFilter.set(null); }
   sort(k: SortKey) {
     if (this.sortKey() === k) this.sortAsc.update((v) => !v);
     else { this.sortKey.set(k); this.sortAsc.set(true); }

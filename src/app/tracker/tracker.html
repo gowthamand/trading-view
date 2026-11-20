@@ -116,7 +116,7 @@
   <div class="row g-3 g-lg-4">
     @for (g of groups(); track g.name) {
       <div class="col-12 col-sm-6 col-lg-3">
-        <section class="panel group-card">
+        <section class="panel group-card" role="button" tabindex="0" [class.selected]="groupFilter() === g.name" [attr.aria-pressed]="groupFilter() === g.name" (click)="toggleGroup(g.name)" (keydown.enter)="toggleGroup(g.name)">
           <div class="d-flex align-items-center gap-3 mb-3">
             <span class="g-icon" [style.background]="g.color">{{ g.name[0] }}</span>
             <h3 class="fs-5 mb-0 me-auto">{{ g.name }}</h3><span class="text-muted">•••</span>
@@ -134,7 +134,11 @@
   <!-- Table -->
   <section class="panel p-0 mt-4 overflow-hidden">
     <div class="d-flex flex-wrap align-items-center gap-2 p-3 p-md-4">
-      <h2 class="panel-title me-auto mb-0">{{ tabs[tabs.findIndex(t => t.key === tab())].label }}</h2>
+      <h2 class="panel-title mb-0">{{ tabs[tabs.findIndex(t => t.key === tab())].label }}</h2>
+      @if (groupFilter(); as g) {
+        <button class="btn btn-sm btn-light rounded-pill" (click)="toggleGroup(g)" title="Show all">{{ g }} ✕</button>
+      }
+      <span class="me-auto"></span>
       <input class="form-control form-control-sm d-md-none" placeholder="Search..." (input)="onSearch($event)" [value]="query()">
       <button class="btn btn-outline-secondary btn-sm btn-ghost">⤴ Export</button>
       <button class="btn btn-outline-secondary btn-sm btn-ghost">☰ Filter</button>
@@ -144,23 +148,25 @@
         <thead>
           <tr>
             <th (click)="sort('symbol')">Name <span class="s">⇅</span></th>
-            <th class="d-none d-md-table-cell" (click)="sort('group')">Group <span class="s">⇅</span></th>
             <th class="d-none d-sm-table-cell" (click)="sort('volume')">Volume <span class="s">⇅</span></th>
             <th (click)="sort('changePct')">Change <span class="s">⇅</span></th>
             <th class="text-end" (click)="sort('last')">Last <span class="s">⇅</span></th>
+            <th class="text-end d-none d-md-table-cell" (click)="sort('high52')">52W High <span class="s">⇅</span></th>
+            <th class="text-end d-none d-md-table-cell" (click)="sort('low52')">52W Low <span class="s">⇅</span></th>
           </tr>
         </thead>
         <tbody>
           @for (r of rows(); track r.symbol) {
             <tr class="clickable" (click)="selectChart(r.symbol)">
               <td><div class="d-flex align-items-center gap-3"><span class="logo">{{ r.symbol.slice(0, 2) }}</span><div><div class="fw-semibold">{{ r.name }}</div><small class="text-muted">{{ r.symbol }}</small></div></div></td>
-              <td class="d-none d-md-table-cell">{{ r.group }}</td>
               <td class="d-none d-sm-table-cell">{{ compact(r.volume) }}</td>
               <td><span class="pill" [class.up]="r.changePct > 0" [class.down]="r.changePct < 0">{{ r.changePct > 0 ? '↑' : r.changePct < 0 ? '↓' : '' }} {{ abs(r.changePct) | number: '1.2-2' }}%</span></td>
               <td class="text-end fw-semibold num">{{ r.live ? (r.last | number: '1.2-2') : '—' }}</td>
+              <td class="text-end d-none d-md-table-cell num">{{ r.high52 ? (r.high52 | number: '1.2-2') : '—' }}</td>
+              <td class="text-end d-none d-md-table-cell num">{{ r.low52 ? (r.low52 | number: '1.2-2') : '—' }}</td>
             </tr>
           } @empty {
-            <tr><td colspan="5" class="text-center text-muted py-4">No matches</td></tr>
+            <tr><td colspan="6" class="text-center text-muted py-4">No matches</td></tr>
           }
         </tbody>
       </table>

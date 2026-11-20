@@ -9,6 +9,8 @@ export interface Quote {
   change: number;
   changePct: number;
   volume: number;
+  high52?: number;
+  low52?: number;
   currency: string;
   time: number;
   error?: string;
