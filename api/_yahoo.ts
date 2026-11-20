@@ -37,7 +37,7 @@ function previousClose(r: any): number | undefined {
 
 /** symbols=^NSEI,GC=F -> latest price, change, volume */
 export async function getQuotes(symbolsParam: string | null | undefined) {
-  const symbols = String(symbolsParam ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 120);
+  const symbols = String(symbolsParam ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 200);
   return Promise.all(
     symbols.map(async (symbol) => {
       try {
