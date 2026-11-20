@@ -1,4 +1,4 @@
-import { Component, DestroyRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { MarketData, Point } from './market-data';
 
@@ -33,6 +33,33 @@ const RANGES: Record<Range, { range: string; interval: string; axis: string; tip
   'ALL': { range: 'max', interval: '1mo', axis: 'y', tip: 'MMM y' },
 };
 
+/** Company websites, used to fetch each stock's logo (favicon). Stocks whose site has
+ *  no favicon on Google's service are left out and show coloured initials instead. */
+const STOCK_DOMAINS: Record<string, string> = {
+  RELIANCE: 'ril.com', TCS: 'www.tcs.com', HDFCBANK: 'hdfcbank.com', ICICIBANK: 'icicibank.com', INFY: 'infosys.com',
+  SBIN: 'onlinesbi.sbi', BHARTIARTL: 'airtel.in', LT: 'larsentoubro.com', TMCV: 'tatamotors.com',
+  SOUTHBANK: 'southindianbank.com', TATASTEEL: 'tatasteel.com', TMB: 'tmb.in',
+  TATACHEM: 'tatachemicals.com', MANAPPURAM: 'manappuram.com', KTKBANK: 'karnatakabank.com',
+  DRREDDY: 'drreddys.com', SENCO: 'sencogoldanddiamonds.com',
+  NATCOPHARM: 'natcopharma.co.in', WIPRO: 'wipro.com', ZYDUSLIFE: 'zyduslife.com',
+  TMPV: 'tatamotors.com', ITCHOTELS: 'itchotels.com', IDFCFIRSTB: 'idfcfirstbank.com', SPANDANA: 'spandanasphoorty.com',
+  INDUSINDBK: 'indusind.com', AAPL: 'apple.com', MSFT: 'microsoft.com', NVDA: 'nvidia.com', AMZN: 'amazon.com',
+  GOOGL: 'google.com', META: 'meta.com', TSLA: 'tesla.com',
+};
+
+/** Logo URL for a stock symbol, or '' when unknown. */
+export function logoUrl(symbol: string) {
+  const d = STOCK_DOMAINS[symbol];
+  return d ? `https://www.google.com/s2/favicons?domain=${d}&sz=64` : '';
+}
+
+/** Stable, distinct colour per symbol for the initials fallback. */
+function symbolColor(symbol: string) {
+  let h = 0;
+  for (const c of symbol) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `hsl(${h} 62% 42%)`;
+}
+
 /** sessionStorage key for the current tab, group filter and chart. */
 const VIEW_KEY = 'tracker.view';
 
@@ -44,6 +71,7 @@ const VIEW_KEY = 'tracker.view';
 })
 export class Tracker {
   readonly md = inject(MarketData);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly tabs: { key: Tab; label: string }[] = [
     { key: 'indices', label: 'Indices' },
@@ -212,7 +240,27 @@ export class Tracker {
       { symbol: 'IBEX35', yahoo: '^IBEX', name: 'IBEX 35', group: 'Europe', icon: '35', color: '#1d2a5c' },
     ]},
   ];
+  /** Right panel shows either the mixed watchlist or the stock list (India / US). */
+  readonly listMode = signal<'watch' | 'stocks'>('watch');
+  readonly listMenuOpen = signal(false);
+  setListMode(m: 'watch' | 'stocks') { this.listMode.set(m); this.listMenuOpen.set(false); }
+
+  /** Stocklist groups, built from the Stocks tab so both stay in sync. */
+  private readonly stockDefs = [
+    { name: 'INDIAN STOCKS', group: 'India', color: '#0f8a5f' },
+    { name: 'US STOCKS', group: 'US', color: '#3c6bd8' },
+  ].map((g) => ({
+    name: g.name,
+    items: this.defs.stocks.filter((d) => d.group === g.group).map((d) => ({ ...d, icon: d.symbol.slice(0, 2), color: symbolColor(d.symbol) })),
+  }));
+
   readonly watchCollapsed = signal<Set<string>>(new Set());
+
+  readonly logoUrl = logoUrl;
+  readonly symbolColor = symbolColor;
+  /** Symbols whose logo failed to load; they fall back to coloured initials. */
+  readonly brokenLogos = signal<Set<string>>(new Set());
+  logoFailed(symbol: string) { this.brokenLogos.update((s) => new Set(s).add(symbol)); }
 
   readonly tab = signal<Tab>('indices');
   readonly query = signal('');
@@ -239,7 +287,7 @@ export class Tracker {
   readonly gainers = computed(() => this.liveAll().filter((r) => r.changePct > 0).length);
   readonly best = computed(() => this.liveAll().reduce<Instrument | null>((a, b) => (!a || b.changePct > a.changePct ? b : a), null));
   readonly watchGroups = computed(() =>
-    this.watchDefs.map((g) => ({
+    (this.listMode() === 'stocks' ? this.stockDefs : this.watchDefs).map((g) => ({
       name: g.name,
       rows: this.withQuotes(g.items).map((r) => ({ ...r, icon: (r as any).icon as string, color: (r as any).color as string, ...this.tick(r.yahoo, r.last) })),
     })),
@@ -305,6 +353,14 @@ export class Tracker {
   readonly W = 800; readonly H = 220;
 
   readonly chartDef = computed(() => this.everything().find((r) => r.symbol === this.chartSymbol())!);
+  /** Watchlist icons by Yahoo ticker, so every table and the chart reuse them. */
+  private readonly watchIcons = new Map(this.watchDefs.flatMap((g) => g.items).map((i) => [i.yahoo, { icon: i.icon, color: i.color }]));
+  /** Badge for any instrument: its watchlist icon if there is one, otherwise coloured initials. */
+  badge(symbol: string, yahoo?: string) {
+    const w = (yahoo && this.watchIcons.get(yahoo)) || this.watchDefs.flatMap((g) => g.items).find((i) => i.symbol === symbol);
+    return w ? { icon: w.icon, color: w.color } : { icon: symbol.replace(/[^A-Z0-9&]/gi, '').slice(0, 2), color: symbolColor(symbol) };
+  }
+  readonly chartBadge = computed(() => this.badge(this.chartSymbol(), this.chartDef()?.yahoo));
   readonly bounds = computed(() => {
     const v = this.series().map((p) => p.c);
     if (!v.length) return { lo: 0, hi: 1 };
@@ -342,15 +398,28 @@ export class Tracker {
 
   constructor() {
     // Only fetch in the browser (not during server-side rendering)
+    const host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;
     afterNextRender(() => {
       this.restoreView();
+      // Sticky table bar and column headers sit below the sticky top bar; heights vary by screen width.
+      const topbar = host.querySelector<HTMLElement>('.topbar');
+      if (topbar && typeof ResizeObserver !== 'undefined') {
+        const tablebar = host.querySelector<HTMLElement>('.table-bar');
+        const ro = new ResizeObserver(() => {
+          host.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
+          if (tablebar) host.style.setProperty('--tablebar-h', `${tablebar.offsetHeight}px`);
+        });
+        ro.observe(topbar);
+        if (tablebar) ro.observe(tablebar);
+        this.destroyRef.onDestroy(() => ro.disconnect());
+      }
       this.md.start([...new Set(this.everything().map((r) => r.yahoo))]);
       this.loadHistory();
     });
-    inject(DestroyRef).onDestroy(() => this.md.stop());
+    this.destroyRef.onDestroy(() => this.md.stop());
     // Remember the view for this browser tab so a refresh doesn't reset it.
     effect(() => {
-      const view = { tab: this.tab(), group: this.groupFilter(), symbol: this.chartSymbol(), range: this.range() };
+      const view = { tab: this.tab(), group: this.groupFilter(), symbol: this.chartSymbol(), range: this.range(), list: this.listMode() };
       if (!this.restored) return;
       try { sessionStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch { /* storage unavailable */ }
     });
@@ -368,6 +437,7 @@ export class Tracker {
       }
       if (v && this.everything().some((r) => r.symbol === v.symbol)) this.chartSymbol.set(v.symbol);
       if (v && v.range in RANGES) this.range.set(v.range);
+      if (v && (v.list === 'watch' || v.list === 'stocks')) this.listMode.set(v.list);
     } catch { /* storage unavailable or bad JSON: keep defaults */ }
     this.restored = true;
   }

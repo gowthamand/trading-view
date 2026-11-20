@@ -33,7 +33,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .stat-split { border-right: 1px solid var(--border); }
 .pill { display: inline-flex; align-items: center; gap: 2px; font-size: .8rem; font-weight: 600; padding: .2rem .55rem; border-radius: 6px; background: #f1f2f5; color: var(--muted);
   &.up { background: #e8f8ee; color: var(--up); } &.down { background: #fdecef; color: var(--down); } }
-.logo { width: 40px; height: 40px; border-radius: 50%; background: #f1f2f5; display: grid; place-items: center; font-weight: 700; font-size: .75rem; flex-shrink: 0; }
+.logo { width: 30px; height: 30px; border-radius: 50%; background: #f1f2f5; display: grid; place-items: center; font-weight: 700; font-size: .66rem; flex-shrink: 0; }
 
 /* Chart */
 .chart { gap: .75rem; font-size: .85rem; color: var(--muted); }
@@ -62,14 +62,14 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 
 /* Table */
 .btn-ghost { border-color: var(--border); color: var(--text); background: #fff; padding: .4rem .9rem; border-radius: 8px; }
-.table { th { background: var(--bg); color: var(--muted); font-weight: 500; padding: 1rem 1.5rem; cursor: pointer; white-space: nowrap; user-select: none; border-bottom: 0; .s { opacity: .5; } }
-  td { padding: 1rem 1.5rem; border-color: var(--border); } }
+.table { th { background: var(--bg); color: var(--muted); font-weight: 500; padding: .6rem 1.5rem; cursor: pointer; white-space: nowrap; user-select: none; border-bottom: 0; .s { opacity: .5; } }
+  td { padding: .45rem 1.5rem; border-color: var(--border); line-height: 1.25; } }
 .num, .big-value, .mid-value, .y-axis, .tip b { font-variant-numeric: tabular-nums; }
 
 @media (max-width: 767.98px) {
   .stat-split { border-right: 0; }
   .panel { padding: 1.1rem; }
-  .table th, .table td { padding: .8rem 1rem; }
+  .table th, .table td { padding: .45rem 1rem; }
 }
 
 /* Live data */
@@ -86,7 +86,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 
 /* TradingView-style watchlist */
 .watchlist { max-height: 640px; overflow: hidden; font-size: .875rem; }
-.wl-head { padding: .9rem 1rem .5rem 1.25rem; b { font-size: 1.1rem; } .caret { color: var(--muted); display: inline-flex; svg { width: 18px; height: 18px; stroke-width: 2; } } }
+.wl-head { padding: .9rem 1rem .5rem 1.25rem; .wl-switch { font-size: 1.1rem; font-weight: 700; background: none; border: 0; padding: 0; color: inherit; } .caret { color: var(--muted); display: inline-flex; svg { width: 18px; height: 18px; stroke-width: 2; } } }
 .wl-grid { display: grid; grid-template-columns: 1.5fr 1.1fr 1fr .9fr; gap: 6px; align-items: center; padding: 0 1rem 0 1.25rem;
   > span:not(:first-child) { text-align: right; } }
 .wl-cols { color: var(--muted); font-size: .78rem; padding-block: .5rem; border-bottom: 1px solid var(--border); }
@@ -109,3 +109,22 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 
 .range-side { max-width: 100%; }
 @media (max-width: 767.98px) { .range-side { align-items: flex-start !important; width: 100%; } }
+
+/* Table title bar stays visible under the sticky top bar while scrolling long lists.
+   `overflow: clip` keeps the rounded corners without breaking position: sticky. */
+.table-panel { overflow: clip; }
+.table-bar { position: sticky; top: var(--topbar-h, 0px); z-index: 5; background: var(--card, #fff); border-bottom: 1px solid var(--border); }
+/* Column headers stick under the title bar. The wrapper must not be a scroll container
+   (Bootstrap's .table-responsive is), or sticky would be relative to it instead of the page. */
+.table-wrap { overflow: visible; }
+.table-panel thead th { position: sticky; top: calc(var(--topbar-h, 0px) + var(--tablebar-h, 0px)); z-index: 4; }
+/* Phones: the table can't scroll sideways (that would break the sticky header), so tighten it to fit. */
+@media (max-width: 575.98px) {
+  .table-panel .table th, .table-panel .table td { padding: .45rem .5rem; }
+  .table-panel .table .logo { display: none; }
+}
+.wl-menu { position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 4px; min-width: 150px; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(17,24,39,.08); padding: 4px;
+  button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: .45rem .7rem; border-radius: 6px; &:hover { background: var(--bg); } &.active { color: var(--primary); font-weight: 600; } } }
+.wl-logo, .logo-img { background: #fff; object-fit: contain; padding: 2px; box-shadow: 0 0 0 1px var(--border); }
+.logo-img { padding: 5px; } .logo-color { color: #fff; }
+.chart-logo.wl-icon, .chart-logo.wl-logo { width: 28px; height: 28px; font-size: .62rem; }
