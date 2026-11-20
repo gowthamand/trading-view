@@ -426,7 +426,10 @@ export class Tracker {
   readonly periodChange = computed(() => {
     const s = this.series();
     if (s.length < 2) return null;
-    const a = s[0].c, b = s[s.length - 1].c;
+    const d = this.chartDef();
+    const b = s[s.length - 1].c;
+    // 1D: measure from previous close (like "Today"), not the first intraday bar
+    const a = this.range() === '1D' && d.live && d.last - d.change ? d.last - d.change : s[0].c;
     return { abs: b - a, pct: ((b - a) / a) * 100 };
   });
 
