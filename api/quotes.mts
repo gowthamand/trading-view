@@ -1,4 +1,4 @@
-import { getQuotes } from './_yahoo.js';
+import { getQuotes } from './_yahoo.mjs';
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
