@@ -6,6 +6,7 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
+import { getHistory, getQuotes } from '../api/_yahoo';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -24,68 +25,15 @@ const angularApp = new AngularNodeAppEngine();
  * ```
  */
 
-const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
-const UA = { 'User-Agent': 'Mozilla/5.0' };
-const cache = new Map<string, { at: number; data: unknown }>();
-
-/** Fetch a Yahoo chart response, cached for `ttl` ms. */
-async function yahooChart(symbol: string, range: string, interval: string, ttl: number) {
-  const key = `${symbol}|${range}|${interval}`;
-  const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < ttl) return hit.data as any;
-  // Yahoo has no 3y range, so use explicit timestamps for it
-  const span = range === '3y'
-    ? `period1=${Math.floor(Date.now() / 1000) - 3 * 365 * 86400}&period2=${Math.floor(Date.now() / 1000)}`
-    : `range=${range}`;
-  const url = `${YAHOO}${encodeURIComponent(symbol)}?${span}&interval=${interval}`;
-  const res = await fetch(url, { headers: UA });
-  if (!res.ok) throw new Error(`${symbol}: HTTP ${res.status}`);
-  const json: any = await res.json();
-  const result = json?.chart?.result?.[0];
-  if (!result) throw new Error(`${symbol}: no data`);
-  cache.set(key, { at: Date.now(), data: result });
-  return result;
-}
-
-/** GET /api/quotes?symbols=^NSEI,GC=F  -> latest price, change, volume */
+/** GET /api/quotes?symbols=^NSEI,GC=F  (same logic as the Vercel function in api/quotes.ts) */
 app.get('/api/quotes', async (req, res) => {
-  const symbols = String(req.query['symbols'] ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50);
-  const out = await Promise.all(
-    symbols.map(async (symbol) => {
-      try {
-        const r = await yahooChart(symbol, '1d', '5m', 4_000);
-        const m = r.meta;
-        const price = m.regularMarketPrice;
-        const prev = m.chartPreviousClose ?? m.previousClose ?? price;
-        return {
-          symbol,
-          price,
-          change: price - prev,
-          changePct: prev ? ((price - prev) / prev) * 100 : 0,
-          volume: m.regularMarketVolume ?? 0,
-          currency: m.currency ?? '',
-          time: (m.regularMarketTime ?? 0) * 1000,
-        };
-      } catch (e) {
-        return { symbol, error: (e as Error).message };
-      }
-    }),
-  );
-  res.json(out);
+  res.json(await getQuotes(req.query['symbols'] as string | undefined));
 });
 
-/** GET /api/history?symbol=^NSEI&range=1y&interval=1mo -> [{t, c}] */
+/** GET /api/history?symbol=^NSEI&range=1y&interval=1mo  (same logic as api/history.ts) */
 app.get('/api/history', async (req, res) => {
-  const symbol = String(req.query['symbol'] ?? '');
-  const range = /^(1d|5d|1mo|3mo|6mo|1y|2y|3y|5y|10y|max)$/.test(String(req.query['range'])) ? String(req.query['range']) : '1y';
-  const interval = /^(5m|15m|30m|1h|1d|1wk|1mo)$/.test(String(req.query['interval'])) ? String(req.query['interval']) : '1mo';
   try {
-    const r = await yahooChart(symbol, range, interval, 60_000);
-    const closes: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
-    const points = (r.timestamp ?? [])
-      .map((t: number, i: number) => ({ t: t * 1000, c: closes[i] }))
-      .filter((p: { c: number | null }) => p.c != null);
-    res.json(points);
+    res.json(await getHistory(req.query['symbol'], req.query['range'], req.query['interval']));
   } catch (e) {
     res.status(502).json({ error: (e as Error).message });
   }
