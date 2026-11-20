@@ -10,6 +10,7 @@
     "serve:ssr:trading-view": "node dist/trading-view/server/server.mjs"
   },
   "private": true,
+  "type": "module",
   "packageManager": "npm@10.8.2",
   "dependencies": {
     "@angular/common": "^21.2.0",

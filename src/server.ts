@@ -6,7 +6,7 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
-import { getHistory, getQuotes } from '../api/_yahoo.mjs';
+import { getHistory, getQuotes } from '../api/_yahoo';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
