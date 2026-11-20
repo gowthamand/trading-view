@@ -94,7 +94,7 @@
                 <div class="wl-grid wl-row" [class.selected]="w.symbol === chartSymbol()" (click)="selectChart(w.symbol)" [title]="w.name">
                   <span class="wl-sym"><i class="wl-icon" [style.background]="w.color">{{ w.icon }}</i>{{ w.symbol }}</span>
                   <span class="num">{{ w.head }}<span [class.text-success]="w.dir > 0" [class.text-danger]="w.dir < 0">{{ w.tail }}</span></span>
-                  <span class="num" [class.text-success]="w.change > 0" [class.text-danger]="w.change < 0">{{ w.live ? ((w.change < 0 ? '−' : '') + (abs(w.change) | number: '1.2-4')) : '—' }}</span>
+                  <span class="num" [class.text-success]="w.change > 0" [class.text-danger]="w.change < 0">{{ w.live ? ((w.change < 0 ? '−' : '') + (abs(w.change) | number: '1.2-2')) : '—' }}</span>
                   <span class="num" [class.text-success]="w.changePct > 0" [class.text-danger]="w.changePct < 0">{{ w.live ? ((w.changePct < 0 ? '−' : '') + (abs(w.changePct) | number: '1.2-2') + '%') : '—' }}</span>
                 </div>
               }
