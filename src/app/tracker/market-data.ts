@@ -1,4 +1,5 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
@@ -20,6 +21,7 @@ export interface Point { t: number; c: number; }
 export class MarketData {
   private http = inject(HttpClient);
   private timer?: ReturnType<typeof setInterval>;
+  private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly quotes = signal<Record<string, Quote>>({});
   /** Quotes from the previous poll, used to highlight ticks. */
@@ -31,6 +33,8 @@ export class MarketData {
   /** Start polling quotes for the given Yahoo symbols. */
   start(symbols: string[], everyMs = 5_000) {
     this.stop();
+    // Never poll during prerender/SSR: the timer keeps the build busy and floods the log.
+    if (!this.isBrowser) return;
     const load = () => this.refresh(symbols);
     load();
     this.timer = setInterval(load, everyMs);
