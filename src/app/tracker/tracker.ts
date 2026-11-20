@@ -1,4 +1,4 @@
-import { Component, DestroyRef, afterNextRender, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { MarketData, Point } from './market-data';
 
@@ -32,6 +32,9 @@ const RANGES: Record<Range, { range: string; interval: string; axis: string; tip
   '10Y': { range: '10y', interval: '1mo', axis: 'y', tip: 'MMM y' },
   'ALL': { range: 'max', interval: '1mo', axis: 'y', tip: 'MMM y' },
 };
+
+/** sessionStorage key for the current tab, group filter and chart. */
+const VIEW_KEY = 'tracker.view';
 
 @Component({
   selector: 'app-tracker',
@@ -304,10 +307,33 @@ export class Tracker {
   constructor() {
     // Only fetch in the browser (not during server-side rendering)
     afterNextRender(() => {
+      this.restoreView();
       this.md.start([...new Set(this.everything().map((r) => r.yahoo))]);
       this.loadHistory();
     });
     inject(DestroyRef).onDestroy(() => this.md.stop());
+    // Remember the view for this browser tab so a refresh doesn't reset it.
+    effect(() => {
+      const view = { tab: this.tab(), group: this.groupFilter(), symbol: this.chartSymbol(), range: this.range() };
+      if (!this.restored) return;
+      try { sessionStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch { /* storage unavailable */ }
+    });
+  }
+
+  private restored = false;
+
+  /** Re-apply the tab, group filter and chart saved in sessionStorage, ignoring stale values. */
+  private restoreView() {
+    try {
+      const v = JSON.parse(sessionStorage.getItem(VIEW_KEY) ?? 'null');
+      if (v && v.tab in this.defs) {
+        this.tab.set(v.tab);
+        if (typeof v.group === 'string' && this.defs[v.tab as Tab].some((d) => d.group === v.group)) this.groupFilter.set(v.group);
+      }
+      if (v && this.everything().some((r) => r.symbol === v.symbol)) this.chartSymbol.set(v.symbol);
+      if (v && v.range in RANGES) this.range.set(v.range);
+    } catch { /* storage unavailable or bad JSON: keep defaults */ }
+    this.restored = true;
   }
 
   async loadHistory() {
