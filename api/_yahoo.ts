@@ -22,15 +22,31 @@ async function yahooChart(symbol: string, range: string, interval: string, ttl: 
   return result;
 }
 
+/** Close of the last full session before the current one, from a daily-bar chart. */
+function previousClose(r: any): number | undefined {
+  const offset = (r.meta.gmtoffset ?? 0) * 1000;
+  const day = (s: number) => new Date(s * 1000 + offset).toISOString().slice(0, 10);
+  const today = day(r.meta.regularMarketTime ?? Date.now() / 1000);
+  const closes: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
+  const ts: number[] = r.timestamp ?? [];
+  for (let i = ts.length - 1; i >= 0; i--) {
+    if (closes[i] != null && day(ts[i]) < today) return closes[i]!;
+  }
+  return undefined;
+}
+
 /** symbols=^NSEI,GC=F -> latest price, change, volume */
 export async function getQuotes(symbolsParam: string | null | undefined) {
   const symbols = String(symbolsParam ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 50);
   return Promise.all(
     symbols.map(async (symbol) => {
       try {
-        const m = (await yahooChart(symbol, '1d', '5m', 4_000)).meta;
+        // Daily bars, not the 1d/5m chart: for Indian indices Yahoo's 1d `chartPreviousClose`
+        // can be two sessions old, which made the day's change far too large.
+        const r = await yahooChart(symbol, '5d', '1d', 4_000);
+        const m = r.meta;
         const price = m.regularMarketPrice;
-        const prev = m.chartPreviousClose ?? m.previousClose ?? price;
+        const prev = previousClose(r) ?? m.chartPreviousClose ?? m.previousClose ?? price;
         return {
           symbol,
           price,
