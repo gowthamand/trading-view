@@ -40,11 +40,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .y-axis { padding-bottom: 2.1rem; }
 .plot { min-height: 220px; cursor: crosshair; svg { width: 100%; height: 100%; display: block; } }
 .grid { stroke: #e5e7eb; stroke-dasharray: 4 6; }
-.stroke { stroke: var(--trend, var(--primary)); stroke-width: 0.5; }
+.stroke { stroke: var(--trend, var(--primary)); stroke-width: 0.9; }
 .cursor { stroke: var(--trend, var(--primary)); stroke-dasharray: 3 4; stroke-width: 1.2; }
 .marker { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--trend, var(--primary)); border: 3px solid #fff; box-shadow: 0 0 0 1px var(--trend, var(--primary)); transform: translate(-50%, -50%); pointer-events: none; }
-.tip { position: absolute; transform: translate(14px, -50%); background: #111827; color: #fff; padding: .45rem .75rem; border-radius: 8px; white-space: nowrap; pointer-events: none; text-align: center;
-  b { display: block; font-size: 1rem; } small { color: #9ca3af; } &.flip { transform: translate(calc(-100% - 14px), -50%); } }
+.tip { position: absolute; transform: translate(12px, -50%); background: rgba(17, 24, 39, .82); color: #fff; padding: .3rem .55rem; border-radius: 6px; white-space: nowrap; pointer-events: none; text-align: center; font-size: .7rem; backdrop-filter: blur(2px);
+  b { display: block; font-size: .8rem; font-weight: 600; } small { color: #cbd5e1; font-size: .65rem; } &.flip { transform: translate(calc(-100% - 12px), -50%); } }
 .x-axis { padding-top: .6rem; .active { color: var(--primary); font-weight: 600; } }
 
 /* Watchlist */
@@ -128,3 +128,5 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .wl-logo, .logo-img { background: #fff; object-fit: contain; padding: 2px; box-shadow: 0 0 0 1px var(--border); }
 .logo-img { padding: 5px; } .logo-color { color: #fff; }
 .chart-logo.wl-icon, .chart-logo.wl-logo { width: 28px; height: 28px; font-size: .62rem; }
+.live-tag.live-red { color: var(--down); }
+.live-tag .live-count { margin-left: 4px; color: var(--muted); font-variant-numeric: tabular-nums; }

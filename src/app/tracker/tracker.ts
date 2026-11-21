@@ -2,6 +2,9 @@ import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, i
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { MarketData, Point } from './market-data';
 
+const POLL_MS = 5_000;
+const POLL_SECS = POLL_MS / 1000;
+
 /** Static definition; live numbers come from MarketData. `yahoo` is the feed ticker. */
 interface Def { symbol: string; yahoo: string; name: string; group: string; }
 
@@ -457,6 +460,13 @@ export class Tracker {
         this.destroyRef.onDestroy(() => ro.disconnect());
       }
       this.md.start([...new Set(this.everything().map((r) => r.yahoo))]);
+      // Seconds until the next quote poll, shown beside the Live tag.
+      const tick = setInterval(() => {
+        const at = this.md.updatedAt();
+        const left = at ? Math.ceil((at + POLL_MS - Date.now()) / 1000) : POLL_SECS;
+        this.countdown.set(Math.min(POLL_SECS, Math.max(0, left)));
+      }, 250);
+      this.destroyRef.onDestroy(() => clearInterval(tick));
       this.loadHistory();
     });
     this.destroyRef.onDestroy(() => this.md.stop());
@@ -467,6 +477,8 @@ export class Tracker {
       try { sessionStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch { /* storage unavailable */ }
     });
   }
+
+  readonly countdown = signal(POLL_SECS);
 
   private restored = false;
 
