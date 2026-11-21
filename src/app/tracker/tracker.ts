@@ -71,6 +71,8 @@ function symbolColor(symbol: string) {
 
 /** sessionStorage key for the current tab, group filter and chart. */
 const VIEW_KEY = 'tracker.view';
+// Theme outlives the tab, so it goes in localStorage rather than sessionStorage.
+const THEME_KEY = 'tracker.theme';
 
 @Component({
   selector: 'app-tracker',
@@ -356,9 +358,7 @@ export class Tracker {
   private watchDigits() {
     effect(() => {
       const d = this.chartDef();
-      const text = d?.live
-        ? this.cur(d.currency) + d.last.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-        : '\u2014';
+      const text = d?.live ? this.cur(d.currency) + this.fmtPrice(d.last) : '\u2014';
       const prev = untracked(this.priceChars);
       const prevText = prev.map((c) => c.ch).join('');
       if (text === prevText) return;
@@ -373,12 +373,62 @@ export class Tracker {
     });
   }
 
+  /** The chosen mode. 'auto' follows the OS and keeps following it as it changes. */
+  readonly themeMode = signal<'light' | 'dark' | 'auto'>('auto');
+  /** What the OS currently asks for; kept current by a media-query listener. */
+  private readonly systemDark = signal(false);
+  /** The mode actually rendered, once 'auto' is resolved. */
+  readonly theme = computed<'light' | 'dark'>(() =>
+    this.themeMode() === 'auto' ? (this.systemDark() ? 'dark' : 'light') : (this.themeMode() as 'light' | 'dark'),
+  );
+
+  /** Cycle light -> dark -> auto. */
+  toggleTheme() {
+    const order = ['light', 'dark', 'auto'] as const;
+    const next = order[(order.indexOf(this.themeMode()) + 1) % order.length];
+    this.themeMode.set(next);
+    this.applyTheme();
+    try { localStorage.setItem(THEME_KEY, next); } catch { /* storage unavailable */ }
+  }
+
+  /** Restore the saved mode and keep the document class in step with the resolved theme. */
+  private restoreTheme() {
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch { /* storage unavailable */ }
+    this.themeMode.set(saved === 'dark' || saved === 'light' || saved === 'auto' ? saved : 'auto');
+
+    if (typeof matchMedia !== 'undefined') {
+      const mq = matchMedia('(prefers-color-scheme: dark)');
+      this.systemDark.set(mq.matches);
+      // Follow the OS live, so 'auto' flips at sunset without a reload.
+      const onChange = (e: MediaQueryListEvent) => { this.systemDark.set(e.matches); this.applyTheme(); };
+      mq.addEventListener('change', onChange);
+      this.destroyRef.onDestroy(() => mq.removeEventListener('change', onChange));
+    }
+
+    this.applyTheme();
+  }
+
+  /** The class lives on <html> so the page backdrop changes too, not just the component. */
+  private applyTheme() {
+    document.documentElement.classList.toggle('dark', this.theme() === 'dark');
+  }
+
+  /** Decimals for a price: two, but none once the number runs past four digits. */
+  dp(n: number) { return Math.abs(n) >= 10_000 ? '1.0-0' : '1.2-2'; }
+
+  /** Format a price the same way the templates do. */
+  private fmtPrice(n: number) {
+    const d = Math.abs(n) >= 10_000 ? 0 : 2;
+    return n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
   /** Short symbol for a currency code; unknown codes fall back to the code itself. */
   cur(code: string) { return code ? (CURRENCY_SIGNS[code] ?? code + '\u00a0') : ''; }
 
   /** Split the price into an unchanged prefix and a changed suffix, plus tick direction. */
   private tick(yahoo: string, last: number) {
-    const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    const fmt = (n: number) => this.fmtPrice(n);
     const now = last ? fmt(last) : '—';
     const prev = this.md.prevQuotes()[yahoo]?.price;
     if (!prev || prev === last) return { head: now, tail: '', dir: 0 };
@@ -485,6 +535,7 @@ export class Tracker {
     const host = inject(ElementRef<HTMLElement>).nativeElement as HTMLElement;
     afterNextRender(() => {
       this.restoreView();
+      this.restoreTheme();
       // Sticky table bar and column headers sit below the sticky top bar; heights vary by screen width.
       const topbar = host.querySelector<HTMLElement>('.topbar');
       if (topbar && typeof ResizeObserver !== 'undefined') {
