@@ -166,3 +166,17 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .big-value .dg.roll-up { animation: roll-up .9s cubic-bezier(.22, .68, .24, 1); }
 .big-value .dg.roll-down { animation: roll-down .9s cubic-bezier(.22, .68, .24, 1); }
 @media (prefers-reduced-motion: reduce) { .big-value .dg { animation: none !important; } }
+
+/* Slim scrollbars: thin, themed, and only tinted on hover. */
+.wl-body, .range-bar, .table-wrap {
+  &::-webkit-scrollbar { width: 6px; height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px;
+    &:hover { background: var(--muted); } }
+  &::-webkit-scrollbar-corner { background: transparent; }
+}
+/* Firefox and anything without the WebKit pseudo-elements. Setting these in a browser
+   that has ::-webkit-scrollbar would override the 6px rule above with a wider native bar. */
+@supports not selector(::-webkit-scrollbar) {
+  .wl-body, .range-bar, .table-wrap { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+}
