@@ -5,6 +5,11 @@ import { MarketData, Point } from './market-data';
 const POLL_MS = 5_000;
 const POLL_SECS = POLL_MS / 1000;
 
+const CURRENCY_SIGNS: Record<string, string> = {
+  USD: '$', INR: '\u20b9', EUR: '\u20ac', GBP: '\u00a3', JPY: '\u00a5', CNY: '\u00a5',
+  AUD: 'A$', CAD: 'C$', HKD: 'HK$', SGD: 'S$', CHF: 'CHF\u00a0', KRW: '\u20a9', BRL: 'R$',
+};
+
 /** Static definition; live numbers come from MarketData. `yahoo` is the feed ticker. */
 interface Def { symbol: string; yahoo: string; name: string; group: string; }
 
@@ -15,6 +20,7 @@ export interface Instrument extends Def {
   volume: number;
   high52: number;
   low52: number;
+  currency: string;
   live: boolean;
 }
 
@@ -314,7 +320,7 @@ export class Tracker {
     const q = this.md.quotes();
     return list.map((d) => {
       const x = q[d.yahoo];
-      return { ...d, last: x?.price ?? 0, change: x?.change ?? 0, changePct: x?.changePct ?? 0, volume: x?.volume ?? 0, high52: x?.high52 ?? 0, low52: x?.low52 ?? 0, live: !!x };
+      return { ...d, last: x?.price ?? 0, change: x?.change ?? 0, changePct: x?.changePct ?? 0, volume: x?.volume ?? 0, high52: x?.high52 ?? 0, low52: x?.low52 ?? 0, currency: x?.currency ?? '', live: !!x };
     });
   }
 
@@ -337,6 +343,9 @@ export class Tracker {
   );
   /** Every instrument shown anywhere, for chart lookups. */
   readonly everything = computed(() => [...this.all(), ...this.watchGroups().flatMap((g) => g.rows)]);
+
+  /** Short symbol for a currency code; unknown codes fall back to the code itself. */
+  cur(code: string) { return code ? (CURRENCY_SIGNS[code] ?? code + '\u00a0') : ''; }
 
   /** Split the price into an unchanged prefix and a changed suffix, plus tick direction. */
   private tick(yahoo: string, last: number) {

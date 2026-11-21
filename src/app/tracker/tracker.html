@@ -27,7 +27,7 @@
               <span class="live-tag" [class.on]="chartDef().live"><i></i>{{ chartDef().live ? 'Live' : 'Loading' }}</span>
             </div>
             <div class="d-flex align-items-center gap-2">
-              <div class="big-value">{{ chartDef().live ? (chartDef().last | number: '1.2-2') : '—' }}</div>
+              <div class="big-value">{{ chartDef().live ? cur(chartDef().currency) + (chartDef().last | number: '1.2-2') : '—' }}</div>
             </div>
             <div class="text-muted">Today
               <span class="fw-semibold" [class.text-success]="chartDef().change >= 0" [class.text-danger]="chartDef().change < 0">{{ chartDef().change >= 0 ? '+' : '' }}{{ chartDef().change | number: '1.2-2' }}</span>
@@ -63,7 +63,7 @@
                 @if (hoverPoint(); as hp) {
                   <span class="marker" [style.left.%]="px(hoverIdx()) / W * 100" [style.top.%]="py(hp.c) / H * 100"></span>
                   <div class="tip" [style.left.%]="px(hoverIdx()) / W * 100" [style.top.%]="py(hp.c) / H * 100" [class.flip]="hoverIdx() > series().length / 2">
-                    <b>{{ hp.c | number: '1.2-2' }}</b><small>Close | {{ hp.t | date: rangeCfg().tip }}</small>
+                    <b>{{ cur(chartDef().currency) }}{{ hp.c | number: '1.2-2' }}</b><small>Close | {{ hp.t | date: rangeCfg().tip }}</small>
                   </div>
                 }
               } @else {
@@ -103,7 +103,7 @@
               @for (w of g.rows; track w.symbol) {
                 <div class="wl-grid wl-row" [class.selected]="w.symbol === chartSymbol()" (click)="selectChart(w.symbol)" [title]="w.name">
                   <span class="wl-sym">@if (logoUrl(w.symbol) && !brokenLogos().has(w.symbol)) {<img class="wl-icon wl-logo" [src]="logoUrl(w.symbol)" alt="" loading="lazy" (error)="logoFailed(w.symbol)">} @else {<i class="wl-icon" [style.background]="w.color">{{ w.icon }}</i>}{{ w.symbol }}</span>
-                  <span class="num">{{ w.head }}<span [class.text-success]="w.dir > 0" [class.text-danger]="w.dir < 0">{{ w.tail }}</span></span>
+                  <span class="num">{{ w.live ? cur(w.currency) : '' }}{{ w.head }}<span [class.text-success]="w.dir > 0" [class.text-danger]="w.dir < 0">{{ w.tail }}</span></span>
                   <span class="num" [class.text-success]="w.change > 0" [class.text-danger]="w.change < 0">{{ w.live ? ((w.change < 0 ? '−' : '') + (abs(w.change) | number: '1.2-2')) : '—' }}</span>
                   <span class="num" [class.text-success]="w.changePct > 0" [class.text-danger]="w.changePct < 0">{{ w.live ? ((w.changePct < 0 ? '−' : '') + (abs(w.changePct) | number: '1.2-2') + '%') : '—' }}</span>
                 </div>
@@ -171,9 +171,9 @@
               <td><div class="d-flex align-items-center gap-2">@if (logoUrl(r.symbol) && !brokenLogos().has(r.symbol)) {<img class="logo logo-img" [src]="logoUrl(r.symbol)" alt="" loading="lazy" (error)="logoFailed(r.symbol)">} @else {@let b = badge(r.symbol, r.yahoo);<span class="logo logo-color" [style.background]="b.color">{{ b.icon }}</span>}<div><div class="fw-semibold">{{ r.name }}</div><small class="text-muted">{{ r.symbol }}</small></div></div></td>
               <td class="d-none d-sm-table-cell">{{ compact(r.volume) }}</td>
               <td><span class="pill" [class.up]="r.changePct > 0" [class.down]="r.changePct < 0">{{ r.changePct > 0 ? '↑' : r.changePct < 0 ? '↓' : '' }} {{ abs(r.changePct) | number: '1.2-2' }}%</span></td>
-              <td class="text-end fw-semibold num">{{ r.live ? (r.last | number: r.last < 10 ? '1.2-4' : '1.2-2') : '—' }}</td>
-              <td class="text-end d-none d-md-table-cell num">{{ r.high52 ? (r.high52 | number: '1.2-2') : '—' }}</td>
-              <td class="text-end d-none d-md-table-cell num">{{ r.low52 ? (r.low52 | number: '1.2-2') : '—' }}</td>
+              <td class="text-end fw-semibold num">{{ r.live ? cur(r.currency) + (r.last | number: r.last < 10 ? '1.2-4' : '1.2-2') : '—' }}</td>
+              <td class="text-end d-none d-md-table-cell num">{{ r.high52 ? cur(r.currency) + (r.high52 | number: '1.2-2') : '—' }}</td>
+              <td class="text-end d-none d-md-table-cell num">{{ r.low52 ? cur(r.currency) + (r.low52 | number: '1.2-2') : '—' }}</td>
             </tr>
           } @empty {
             <tr><td colspan="6" class="text-center text-muted py-4">No matches</td></tr>
