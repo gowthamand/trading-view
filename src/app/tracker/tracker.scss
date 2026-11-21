@@ -130,3 +130,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .chart-logo.wl-icon, .chart-logo.wl-logo { width: 28px; height: 28px; font-size: .62rem; }
 .live-tag.live-red { color: var(--down); }
 .live-tag .live-count { margin-left: 4px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Headline price: only the digits that changed roll into place. */
+.big-value .dg { display: inline-block; }
+@keyframes roll-up { from { transform: translateY(55%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes roll-down { from { transform: translateY(-55%); opacity: 0; } to { transform: none; opacity: 1; } }
+.big-value .dg.roll-up { animation: roll-up .9s cubic-bezier(.22, .68, .24, 1); }
+.big-value .dg.roll-down { animation: roll-down .9s cubic-bezier(.22, .68, .24, 1); }
+@media (prefers-reduced-motion: reduce) { .big-value .dg { animation: none !important; } }

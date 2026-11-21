@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { MarketData, Point } from './market-data';
 
@@ -344,6 +344,35 @@ export class Tracker {
   /** Every instrument shown anywhere, for chart lookups. */
   readonly everything = computed(() => [...this.all(), ...this.watchGroups().flatMap((g) => g.rows)]);
 
+  /**
+   * The headline price split into characters. Each carries a `key`: unchanged characters keep
+   * a stable one, changed characters get a fresh one so Angular recreates the node and the
+   * roll animation replays. `dir` is the direction of the move.
+   */
+  readonly priceChars = signal<{ ch: string; key: string; dir: number }[]>([]);
+  private charSeq = 0;
+
+  /** Rebuild the headline characters whenever the charted price changes. */
+  private watchDigits() {
+    effect(() => {
+      const d = this.chartDef();
+      const text = d?.live
+        ? this.cur(d.currency) + d.last.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '\u2014';
+      const prev = untracked(this.priceChars);
+      const prevText = prev.map((c) => c.ch).join('');
+      if (text === prevText) return;
+      const before = this.md.prevQuotes()[d?.yahoo ?? '']?.price;
+      const dir = before === undefined || !d?.last ? 0 : d.last > before ? 1 : d.last < before ? -1 : 0;
+      this.charSeq++;
+      this.priceChars.set([...text].map((ch, i) => ({
+        ch,
+        key: ch === prevText[i] ? `k${i}` : `k${i}-${this.charSeq}`,
+        dir: ch === prevText[i] ? 0 : dir,
+      })));
+    });
+  }
+
   /** Short symbol for a currency code; unknown codes fall back to the code itself. */
   cur(code: string) { return code ? (CURRENCY_SIGNS[code] ?? code + '\u00a0') : ''; }
 
@@ -479,6 +508,7 @@ export class Tracker {
       this.loadHistory();
     });
     this.destroyRef.onDestroy(() => this.md.stop());
+    this.watchDigits();
     // Remember the view for this browser tab so a refresh doesn't reset it.
     effect(() => {
       const view = { tab: this.tab(), group: this.groupFilter(), symbol: this.chartSymbol(), range: this.range(), list: this.listMode() };

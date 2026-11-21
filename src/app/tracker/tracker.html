@@ -27,7 +27,7 @@
               <span class="live-tag" [class.on]="chartDef().live"><i></i>{{ chartDef().live ? 'Live' : 'Loading' }}</span>
             </div>
             <div class="d-flex align-items-center gap-2">
-              <div class="big-value">{{ chartDef().live ? cur(chartDef().currency) + (chartDef().last | number: '1.2-2') : '—' }}</div>
+              <div class="big-value">@for (c of priceChars(); track c.key) {<span class="dg" [class.roll-up]="c.dir === 1" [class.roll-down]="c.dir === -1">{{ c.ch }}</span>}</div>
             </div>
             <div class="text-muted">Today
               <span class="fw-semibold" [class.text-success]="chartDef().change >= 0" [class.text-danger]="chartDef().change < 0">{{ chartDef().change >= 0 ? '+' : '' }}{{ chartDef().change | number: '1.2-2' }}</span>
