@@ -22,17 +22,13 @@ async function yahooChart(symbol: string, range: string, interval: string, ttl: 
   return result;
 }
 
-/** Close of the last full session before the current one, from a daily-bar chart. */
+/** Close of the session before the latest daily bar (the latest bar is the live/current session).
+ *  Compared by bar position, not calendar date: futures like GC=F open the evening before, so the
+ *  live bar's exchange-local date can equal the previous bar's and a date compare skips a session. */
 function previousClose(r: any): number | undefined {
-  const offset = (r.meta.gmtoffset ?? 0) * 1000;
-  const day = (s: number) => new Date(s * 1000 + offset).toISOString().slice(0, 10);
-  const today = day(r.meta.regularMarketTime ?? Date.now() / 1000);
   const closes: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
-  const ts: number[] = r.timestamp ?? [];
-  for (let i = ts.length - 1; i >= 0; i--) {
-    if (closes[i] != null && day(ts[i]) < today) return closes[i]!;
-  }
-  return undefined;
+  const valid = closes.filter((c): c is number => c != null);
+  return valid.length >= 2 ? valid[valid.length - 2] : undefined;
 }
 
 /** symbols=^NSEI,GC=F -> latest price, change, volume */
