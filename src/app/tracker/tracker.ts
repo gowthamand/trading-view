@@ -508,6 +508,8 @@ export class Tracker {
     return { line, area: s.length ? `${line}L${this.W},${this.H}L0,${this.H}Z` : '' };
   });
   readonly hoverIdx = computed(() => (this.hover() >= 0 ? this.hover() : this.series().length - 1));
+  /** The last point follows the live price (its candle is still open), so label it Live, not Close. */
+  readonly hoverIsLive = computed(() => this.hoverIdx() === this.series().length - 1 && !!this.chartDef()?.live);
   readonly hoverPoint = computed(() => this.series()[this.hoverIdx()]);
   readonly xLabels = computed(() => {
     const s = this.series();

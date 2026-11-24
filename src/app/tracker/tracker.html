@@ -74,7 +74,7 @@
                 @if (hoverPoint(); as hp) {
                   <span class="marker" [style.left.%]="px(hoverIdx()) / W * 100" [style.top.%]="py(hp.c) / H * 100"></span>
                   <div class="tip" [style.left.%]="px(hoverIdx()) / W * 100" [style.top.%]="py(hp.c) / H * 100" [class.flip]="hoverIdx() > series().length / 2">
-                    <b>{{ cur(chartDef().currency) }}{{ hp.c | number: dp(hp.c) }}</b><small>Close | {{ hp.t | date: rangeCfg().tip }}</small>
+                    <b>{{ cur(chartDef().currency) }}{{ hp.c | number: dp(hp.c) }}</b><small>{{ hoverIsLive() ? 'Live' : 'Close' }} | {{ (hoverIsLive() ? now() : hp.t) | date: rangeCfg().tip }}</small>
                   </div>
                 }
               } @else {
