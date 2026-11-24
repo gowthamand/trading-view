@@ -38,12 +38,16 @@
               <span class="live-tag" [class.on]="chartDef().live"><i></i>{{ chartDef().live ? 'Live' : 'Loading' }}</span>
             </div>
             <div class="d-flex align-items-center gap-2">
+              @if (chartDef().live) {
               <div class="big-value">@for (c of priceChars(); track c.key) {<span class="dg" [class.roll-up]="c.dir === 1" [class.roll-down]="c.dir === -1">{{ c.ch }}</span>}</div>
+              } @else { <span class="skel skel-price" aria-label="Loading price"></span> }
             </div>
+            @if (!chartDef().live) { <div class="d-flex align-items-center gap-2"><span class="skel skel-text"></span><span class="skel skel-pill"></span></div> } @else {
             <div class="text-muted">Today
               <span class="fw-semibold" [class.text-success]="chartDef().change >= 0" [class.text-danger]="chartDef().change < 0">{{ chartDef().change >= 0 ? '+' : '' }}{{ chartDef().change | number: '1.2-2' }}</span>
               <span class="pill ms-1" [class.up]="chartDef().changePct > 0" [class.down]="chartDef().changePct < 0">{{ chartDef().changePct >= 0 ? '↑' : '↓' }} {{ abs(chartDef().changePct) | number: '1.2-2' }}%</span>
             </div>
+            }
           </div>
           <div class="d-flex flex-column align-items-end gap-2 range-side">
             <div class="d-flex align-items-center gap-2">
@@ -60,7 +64,7 @@
 
         <!-- Chart -->
         <div class="chart mt-3 d-flex flex-grow-1" [class.loading]="chartLoading()" [style.--trend]="trendColor()">
-          <div class="y-axis d-flex flex-column justify-content-between">@for (t of yTicks(); track $index) { <span>{{ tickLabel(t) }}</span> }</div>
+          <div class="y-axis d-flex flex-column justify-content-between" [class.invisible]="!series().length">@for (t of yTicks(); track $index) { <span>{{ tickLabel(t) }}</span> }</div>
           <div class="flex-grow-1 d-flex flex-column" style="min-width:0">
             <div class="plot position-relative flex-grow-1" (mousemove)="onChartMove($event)" (mouseleave)="hover.set(-1)">
               @if (series().length) {
@@ -78,10 +82,16 @@
                   </div>
                 }
               } @else {
-                <div class="h-100 d-grid place-center text-muted">{{ chartLoading() ? 'Loading chart…' : 'No chart data' }}</div>
+                @if (chartLoading()) {
+                  <div class="skel skel-chart" aria-label="Loading chart">
+                    <svg viewBox="0 0 800 220" preserveAspectRatio="none"><path d="M0 160 C80 120 140 170 220 130 S360 60 440 100 S600 170 680 90 S760 70 800 80"/></svg>
+                  </div>
+                } @else {
+                  <div class="h-100 d-grid place-center text-muted">No chart data</div>
+                }
               }
             </div>
-            <div class="x-axis d-flex justify-content-between">@for (p of xLabels(); track $index) { <span [class.d-none]="$index % 2" class="d-sm-inline">{{ p.t | date: rangeCfg().axis }}</span> }</div>
+            <div class="x-axis d-flex justify-content-between" [class.invisible]="!series().length">@for (p of xLabels(); track $index) { <span [class.d-none]="$index % 2" class="d-sm-inline">{{ p.t | date: rangeCfg().axis }}</span> }</div>
           </div>
         </div>
       </section>
@@ -114,9 +124,10 @@
               @for (w of g.rows; track w.symbol) {
                 <div class="wl-grid wl-row" [class.selected]="w.symbol === chartSymbol()" (click)="selectChart(w.symbol)" [title]="w.name">
                   <span class="wl-sym">@if (logoUrl(w.symbol) && !brokenLogos().has(w.symbol)) {<img class="wl-icon wl-logo" [src]="logoUrl(w.symbol)" alt="" loading="lazy" (error)="logoFailed(w.symbol)">} @else {<i class="wl-icon" [style.background]="w.color">{{ w.icon }}</i>}{{ w.symbol }}</span>
+                  @if (!w.live) { <span class="num"><span class="skel skel-num"></span></span><span class="num"><span class="skel skel-num sm"></span></span><span class="num"><span class="skel skel-num sm"></span></span> } @else {
                   <span class="num">{{ w.live ? cur(w.currency) : '' }}{{ w.head }}<span [class.text-success]="w.dir > 0" [class.text-danger]="w.dir < 0">{{ w.tail }}</span></span>
                   <span class="num" [class.text-success]="w.change > 0" [class.text-danger]="w.change < 0">{{ w.live ? ((w.change < 0 ? '−' : '') + (abs(w.change) | number: '1.2-2')) : '—' }}</span>
-                  <span class="num" [class.text-success]="w.changePct > 0" [class.text-danger]="w.changePct < 0">{{ w.live ? ((w.changePct < 0 ? '−' : '') + (abs(w.changePct) | number: '1.2-2') + '%') : '—' }}</span>
+                  <span class="num" [class.text-success]="w.changePct > 0" [class.text-danger]="w.changePct < 0">{{ w.live ? ((w.changePct < 0 ? '−' : '') + (abs(w.changePct) | number: '1.2-2') + '%') : '—' }}</span> }
                 </div>
               }
             }
@@ -182,7 +193,7 @@
               <td><div class="d-flex align-items-center gap-2">@if (logoUrl(r.symbol) && !brokenLogos().has(r.symbol)) {<img class="logo logo-img" [src]="logoUrl(r.symbol)" alt="" loading="lazy" (error)="logoFailed(r.symbol)">} @else {@let b = badge(r.symbol, r.yahoo);<span class="logo logo-color" [style.background]="b.color">{{ b.icon }}</span>}<div><div class="fw-semibold">{{ r.name }}</div><small class="text-muted">{{ r.symbol }}</small></div></div></td>
               <td class="d-none d-sm-table-cell">{{ compact(r.volume) }}</td>
               <td><span class="pill" [class.up]="r.changePct > 0" [class.down]="r.changePct < 0">{{ r.changePct > 0 ? '↑' : r.changePct < 0 ? '↓' : '' }} {{ abs(r.changePct) | number: '1.2-2' }}%</span></td>
-              <td class="text-end fw-semibold num">{{ r.live ? cur(r.currency) + (r.last | number: dp(r.last)) : '—' }}</td>
+              <td class="text-end fw-semibold num">@if (r.live) {{{ cur(r.currency) + (r.last | number: dp(r.last)) }}} @else {<span class="skel skel-num"></span>}</td>
               <td class="text-end d-none d-md-table-cell num">{{ r.high52 ? cur(r.currency) + (r.high52 | number: dp(r.high52)) : '—' }}</td>
               <td class="text-end d-none d-md-table-cell num">{{ r.low52 ? cur(r.currency) + (r.low52 | number: dp(r.low52)) : '—' }}</td>
             </tr>
