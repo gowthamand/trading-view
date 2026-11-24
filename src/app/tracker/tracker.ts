@@ -554,6 +554,7 @@ export class Tracker {
         const at = this.md.updatedAt();
         const left = at ? Math.ceil((at + POLL_MS - Date.now()) / 1000) : POLL_SECS;
         this.countdown.set(Math.min(POLL_SECS, Math.max(0, left)));
+        if (Math.floor(Date.now() / 1000) !== Math.floor(this.now() / 1000)) this.now.set(Date.now());
       }, 250);
       this.destroyRef.onDestroy(() => clearInterval(tick));
       this.loadHistory();
@@ -583,6 +584,16 @@ export class Tracker {
   }
 
   readonly countdown = signal(POLL_SECS);
+  /** Live clock in the top bar, ticked every second. */
+  readonly now = signal(Date.now());
+  readonly tzName = (() => {
+    // 'en' names some zones only as an offset (India -> GMT+5:30); 'en-IN' knows IST, so try both.
+    try {
+      const name = (loc: string) => new Intl.DateTimeFormat(loc, { timeZoneName: 'short' }).formatToParts().find((p) => p.type === 'timeZoneName')?.value ?? '';
+      const en = name('en');
+      return en.startsWith('GMT') ? name('en-IN') || en : en;
+    } catch { return ''; }
+  })();
 
   private restored = false;
 

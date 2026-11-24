@@ -36,6 +36,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round
 .theme-btn { position: relative; svg { stroke-width: 2; }
   /* A dot marks 'auto', so the sun/moon alone doesn't imply a fixed choice. */
   &.auto::after { content: ''; position: absolute; right: 7px; bottom: 7px; width: 5px; height: 5px; border-radius: 50%; background: var(--primary); } }
+/* Live clock beside the theme switch; tabular digits so the seconds don't jitter. */
+.clock { display: flex; align-items: baseline; gap: .5rem; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums;
+  .clock-time { font-weight: 600; font-size: .95rem; }
+  .clock-date { color: var(--muted); font-size: .8rem; } }
 .brand { color: var(--text); font-size: 1.5rem; font-weight: 700; }
 .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #1f6bff, #5aa0ff); color: #fff; font-size: .85rem; display: grid; place-items: center; }
 .search-box { border: 1px solid var(--border); border-radius: 10px; padding: .55rem .9rem; width: min(420px, 40vw); background: var(--card);
