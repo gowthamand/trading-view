@@ -80,9 +80,31 @@ export async function getHistory(symbolParam: unknown, rangeParam: unknown, inte
   const symbol = String(symbolParam ?? '');
   const range = /^(1d|5d|1mo|3mo|6mo|1y|2y|3y|5y|10y|max)$/.test(String(rangeParam)) ? String(rangeParam) : '1y';
   const interval = /^(5m|15m|30m|1h|1d|1wk|1mo)$/.test(String(intervalParam)) ? String(intervalParam) : '1mo';
-  const r = await yahooChart(symbol, range, interval, 10_000);
+  // Yahoo's 1d range starts at midnight exchange time, so futures (session opens the evening before)
+  // show only a few minutes after midnight. Fetch 5d instead and keep just the current session.
+  const intraday = range === '1d';
+  const r = await yahooChart(symbol, intraday ? '5d' : range, interval, 10_000);
   const closes: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
-  return (r.timestamp ?? [])
+  const pts: { t: number; c: number }[] = (r.timestamp ?? [])
     .map((t: number, i: number) => ({ t: t * 1000, c: closes[i] }))
     .filter((p: { c: number | null }) => p.c != null);
+  if (!intraday) return pts;
+  // FX and crypto trade around the clock with sparse overnight ticks: show the last 24h instead.
+  return ['CURRENCY', 'CRYPTOCURRENCY'].includes(r.meta?.instrumentType) ? lastDay(pts) : currentSession(pts);
+}
+
+function lastDay(pts: { t: number; c: number }[]) {
+  const end = pts.length ? pts[pts.length - 1].t : 0;
+  return pts.filter((p) => end - p.t <= 24 * 3600_000);
+}
+
+/** Points since the last trading break (gap of 45+ min), capped at 24h for markets that never close. */
+function currentSession(pts: { t: number; c: number }[]) {
+  if (!pts.length) return pts;
+  const end = pts[pts.length - 1].t;
+  let start = 0;
+  for (let i = pts.length - 1; i > 0; i--) {
+    if (pts[i].t - pts[i - 1].t >= 45 * 60_000) { start = i; break; }
+  }
+  return pts.slice(start).filter((p) => end - p.t <= 24 * 3600_000);
 }
