@@ -35,6 +35,9 @@ function previousClose(r: any): number | undefined {
   return liveMissing ? valid[valid.length - 1] : valid[valid.length - 2];
 }
 
+/** Instrument types whose previous close comes from the 1d chart's settlement, not daily bars. */
+const SETTLEMENT_TYPES = new Set(['FUTURE', 'ALTSYMBOL', 'CURRENCY']);
+
 /** symbols=^NSEI,GC=F -> latest price, change, volume */
 export async function getQuotes(symbolsParam: string | null | undefined) {
   const symbols = String(symbolsParam ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 200);
@@ -46,7 +49,14 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
         const r = await yahooChart(symbol, '5d', '1d', 4_000);
         const m = r.meta;
         const price = m.regularMarketPrice;
-        const prev = previousClose(r) ?? m.chartPreviousClose ?? m.previousClose ?? price;
+        // Futures and FX: Yahoo's daily bars often carry stale closes (Brent, NG, grains, JPYINR were
+        // off by 2-10%), while the 1d chart's chartPreviousClose is the prior settlement. Indices and
+        // stocks keep daily bars, since for Indian indices the 1d value can be two sessions old.
+        let settle: number | undefined;
+        if (SETTLEMENT_TYPES.has(m.instrumentType)) {
+          settle = (await yahooChart(symbol, '1d', '1h', 60_000).catch(() => null))?.meta?.chartPreviousClose;
+        }
+        const prev = settle ?? previousClose(r) ?? m.chartPreviousClose ?? m.previousClose ?? price;
         return {
           symbol,
           price,
