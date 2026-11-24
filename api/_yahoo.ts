@@ -70,7 +70,7 @@ export async function getHistory(symbolParam: unknown, rangeParam: unknown, inte
   const symbol = String(symbolParam ?? '');
   const range = /^(1d|5d|1mo|3mo|6mo|1y|2y|3y|5y|10y|max)$/.test(String(rangeParam)) ? String(rangeParam) : '1y';
   const interval = /^(5m|15m|30m|1h|1d|1wk|1mo)$/.test(String(intervalParam)) ? String(intervalParam) : '1mo';
-  const r = await yahooChart(symbol, range, interval, 60_000);
+  const r = await yahooChart(symbol, range, interval, 10_000);
   const closes: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
   return (r.timestamp ?? [])
     .map((t: number, i: number) => ({ t: t * 1000, c: closes[i] }))

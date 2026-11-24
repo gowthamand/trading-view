@@ -259,7 +259,7 @@ export class Tracker {
     ]},
     { name: 'COMMODITIES', items: [
       { symbol: 'GC1!', yahoo: 'GC=F', name: 'Gold', group: 'Metals', icon: 'Au', color: '#e0a526' },
-      { symbol: 'SILVER1!', yahoo: 'SI=F', name: 'Silver', group: 'Metals', icon: 'Ag', color: '#a5a8b8' },
+      { symbol: 'SI1!', yahoo: 'SI=F', name: 'Silver', group: 'Metals', icon: 'Ag', color: '#a5a8b8' },
       { symbol: 'BRENT', yahoo: 'BZ=F', name: 'Brent Crude', group: 'Energy', icon: '●', color: '#131722' },
     ]},
     { name: 'FOREX', items: [
@@ -557,9 +557,23 @@ export class Tracker {
       }, 250);
       this.destroyRef.onDestroy(() => clearInterval(tick));
       this.loadHistory();
+      // Keep the chart current: re-pull history quietly (no spinner, hover kept).
+      const chartTick = setInterval(() => { if (!document.hidden) this.loadHistory(true); }, 15_000);
+      this.destroyRef.onDestroy(() => clearInterval(chartTick));
     });
     this.destroyRef.onDestroy(() => this.md.stop());
     this.watchDigits();
+    // Move the chart's last point with each live quote so it doesn't wait for the next history pull.
+    effect(() => {
+      this.md.updatedAt();
+      const d = this.chartDef();
+      untracked(() => {
+        const s = this.series();
+        if (!d?.live || !s.length || !d.last || this.chartLoading()) return;
+        const last = s[s.length - 1];
+        if (last.c !== d.last) this.series.set([...s.slice(0, -1), { ...last, c: d.last }]);
+      });
+    });
     // Remember the view for this browser tab so a refresh doesn't reset it.
     effect(() => {
       const view = { tab: this.tab(), group: this.groupFilter(), symbol: this.chartSymbol(), range: this.range(), list: this.listMode() };
@@ -587,15 +601,19 @@ export class Tracker {
     this.restored = true;
   }
 
-  async loadHistory() {
-    this.chartLoading.set(true);
-    this.hover.set(-1);
+  private historyReq = 0;
+
+  /** Fetch history for the selected instrument. `silent` = background refresh: no spinner, keep hover. */
+  async loadHistory(silent = false) {
+    const req = ++this.historyReq;
+    if (!silent) { this.chartLoading.set(true); this.hover.set(-1); }
     try {
-      this.series.set(await this.md.history(this.chartDef().yahoo, this.rangeCfg().range, this.rangeCfg().interval));
+      const pts = await this.md.history(this.chartDef().yahoo, this.rangeCfg().range, this.rangeCfg().interval);
+      if (req === this.historyReq) this.series.set(pts); // ignore stale responses after a symbol/range switch
     } catch {
-      this.series.set([]);
+      if (!silent && req === this.historyReq) this.series.set([]);
     } finally {
-      this.chartLoading.set(false);
+      if (!silent && req === this.historyReq) this.chartLoading.set(false);
     }
   }
 
