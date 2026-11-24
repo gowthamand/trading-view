@@ -275,6 +275,7 @@ export class Tracker {
       { symbol: 'BANK', yahoo: '^BKX', name: 'KBW Nasdaq Bank', group: 'US', icon: 'B', color: '#9aa0ae' },
       { symbol: 'IXIC', yahoo: '^IXIC', name: 'Nasdaq Composite', group: 'US', icon: 'IX', color: '#2f7fb8' },
       { symbol: 'NDX', yahoo: '^NDX', name: 'Nasdaq 100', group: 'US', icon: '100', color: '#2f7fb8' },
+      { symbol: 'RUT', yahoo: '^RUT', name: 'Russell 2000', group: 'US', icon: '2K', color: '#6b4fbb' },
     ]},
     { name: 'ASIA INDEX', items: [
       { symbol: 'NI225', yahoo: '^N225', name: 'Nikkei 225', group: 'Asia', icon: '225', color: '#2a3f7a' },
