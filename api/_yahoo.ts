@@ -98,13 +98,17 @@ function lastDay(pts: { t: number; c: number }[]) {
   return pts.filter((p) => end - p.t <= 24 * 3600_000);
 }
 
-/** Points since the last trading break (gap of 60+ min; shorter holes are missing data, not a break), capped at 24h for markets that never close. */
+/** A real break is the ~1h daily futures pause (60-90 min) or an overnight/weekend close (12h+).
+ *  Gaps in between are Yahoo data holes (gold had a 4h one at midnight ET), not a new session. */
+const isBreak = (gapMs: number) => (gapMs >= 60 * 60_000 && gapMs <= 90 * 60_000) || gapMs >= 12 * 3600_000;
+
+/** Points since the last trading break, capped at 24h for markets that never close. */
 function currentSession(pts: { t: number; c: number }[]) {
   if (!pts.length) return pts;
   const end = pts[pts.length - 1].t;
   let start = 0;
   for (let i = pts.length - 1; i > 0; i--) {
-    if (pts[i].t - pts[i - 1].t >= 60 * 60_000) { start = i; break; }
+    if (isBreak(pts[i].t - pts[i - 1].t)) { start = i; break; }
   }
   return pts.slice(start).filter((p) => end - p.t <= 24 * 3600_000);
 }
