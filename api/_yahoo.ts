@@ -1,4 +1,6 @@
 /** Shared Yahoo Finance helpers, used by the Vercel functions in api/ and by src/server.ts locally. */
+import { ORO_PREFIX, isOro, oroQuote } from './_oropocket.js';
+
 const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 const UA = { 'User-Agent': 'Mozilla/5.0' };
 const cache = new Map<string, { at: number; data: unknown }>();
@@ -44,6 +46,7 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
   return Promise.all(
     symbols.map(async (symbol) => {
       try {
+        if (isOro(symbol)) return await oroQuote(symbol);
         // Daily bars, not the 1d/5m chart: for Indian indices Yahoo's 1d `chartPreviousClose`
         // can be two sessions old, which made the day's change far too large.
         const r = await yahooChart(symbol, '5d', '1d', 4_000);
@@ -76,8 +79,9 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
 }
 
 /** symbol=^NSEI&range=1y&interval=1mo -> [{t, c}]; throws on upstream failure. */
-export async function getHistory(symbolParam: unknown, rangeParam: unknown, intervalParam: unknown) {
+export async function getHistory(symbolParam: unknown, rangeParam: unknown, intervalParam: unknown): Promise<{ t: number; c: number }[]> {
   const symbol = String(symbolParam ?? '');
+  if (isOro(symbol)) return oroHistory(symbol, rangeParam, intervalParam);
   const range = /^(1d|5d|1mo|3mo|6mo|1y|2y|3y|5y|10y|max)$/.test(String(rangeParam)) ? String(rangeParam) : '1y';
   const interval = /^(5m|15m|30m|1h|1d|1wk|1mo)$/.test(String(intervalParam)) ? String(intervalParam) : '1mo';
   // Yahoo's 1d range starts at midnight exchange time, so futures (session opens the evening before)
@@ -91,6 +95,29 @@ export async function getHistory(symbolParam: unknown, rangeParam: unknown, inte
   if (!intraday) return pts;
   // FX and crypto trade around the clock with sparse overnight ticks: show the last 24h instead.
   return ['CURRENCY', 'CRYPTOCURRENCY'].includes(r.meta?.instrumentType) ? lastDay(pts) : currentSession(pts);
+}
+
+/** OroPocket metal -> the Yahoo future whose INR value drives its chart. */
+const ORO_PROXY: Record<string, string> = { GOLD: 'GC=F', SILVER: 'SI=F' };
+const TROY_OZ_G = 31.1035;
+
+/** OroPocket has no history: chart COMEX x USDINR per gram, scaled so it ends at the live OroPocket rate. */
+async function oroHistory(symbol: string, range: unknown, interval: unknown) {
+  const proxy = ORO_PROXY[symbol.slice(ORO_PREFIX.length)];
+  if (!proxy) return [];
+  const [metal, fx, live] = await Promise.all([
+    getHistory(proxy, range, interval),
+    getHistory('USDINR=X', range, interval),
+    oroQuote(symbol).catch(() => null),
+  ]);
+  if (!metal.length || !fx.length) return [];
+  let j = 0;
+  const inr = metal.map((p) => {
+    while (j + 1 < fx.length && fx[j + 1].t <= p.t) j++; // latest USDINR at or before this bar
+    return { t: p.t, c: (p.c * fx[j].c) / TROY_OZ_G };
+  });
+  const k = live ? live.price / inr[inr.length - 1].c : 1;
+  return inr.map((p) => ({ t: p.t, c: p.c * k }));
 }
 
 function lastDay(pts: { t: number; c: number }[]) {

@@ -258,8 +258,10 @@ export class Tracker {
       { symbol: 'FINNIFTY', yahoo: 'NIFTY_FIN_SERVICE.NS', name: 'Nifty Financial Services', group: 'India', icon: 'FIN', color: '#0f8a5f' },
     ]},
     { name: 'COMMODITIES', items: [
-      { symbol: 'GC1!', yahoo: 'GC=F', name: 'Gold', group: 'Metals', icon: 'Au', color: '#e0a526' },
-      { symbol: 'SI1!', yahoo: 'SI=F', name: 'Silver', group: 'Metals', icon: 'Ag', color: '#a5a8b8' },
+      { symbol: 'GC1!', yahoo: 'GC=F', name: 'Gold', group: 'Metals', icon: 'AU', color: '#e0a526' },
+      { symbol: 'SI1!', yahoo: 'SI=F', name: 'Silver', group: 'Metals', icon: 'AG', color: '#a5a8b8' },
+      { symbol: 'GOLD!', yahoo: 'OROPOCKET:GOLD', name: 'Gold, India', group: 'Metals', icon: 'AU', color: '#c98a12' },
+      { symbol: 'SILVER!', yahoo: 'OROPOCKET:SILVER', name: 'Silver, India', group: 'Metals', icon: 'AG', color: '#7d8193' },
       { symbol: 'BRENT', yahoo: 'BZ=F', name: 'Brent Crude', group: 'Energy', icon: '●', color: '#131722' },
     ]},
     { name: 'FOREX', items: [
