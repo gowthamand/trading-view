@@ -163,6 +163,7 @@ export class Tracker {
       { symbol: 'PL1!', yahoo: 'PL=F', name: 'Platinum', group: 'Metals' },
       { symbol: 'PA1!', yahoo: 'PA=F', name: 'Palladium', group: 'Metals' },
       { symbol: 'ALI1!', yahoo: 'ALI=F', name: 'Aluminum', group: 'Metals' },
+      { symbol: 'TIO1!', yahoo: 'TIO=F', name: 'Iron Ore', group: 'Metals' },
       { symbol: 'BRENT', yahoo: 'BZ=F', name: 'Brent Crude', group: 'Energy' },
       { symbol: 'CL1!', yahoo: 'CL=F', name: 'WTI Crude', group: 'Energy' },
       { symbol: 'NG1!', yahoo: 'NG=F', name: 'Natural Gas', group: 'Energy' },

@@ -37,6 +37,15 @@ function previousClose(r: any): number | undefined {
   return liveMissing ? valid[valid.length - 1] : valid[valid.length - 2];
 }
 
+function stalePrice(r: any): number | undefined {
+  const times: number[] = r.timestamp ?? [];
+  const at: number | undefined = r.meta?.regularMarketTime;
+  if (!at || !times.length || times[times.length - 1] - at < 7 * 86400) return undefined;
+  const closes: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
+  const valid = closes.filter((c): c is number => c != null);
+  return valid[valid.length - 1];
+}
+
 /** Instrument types whose previous close comes from the 1d chart's settlement, not daily bars. */
 const SETTLEMENT_TYPES = new Set(['FUTURE', 'ALTSYMBOL', 'CURRENCY']);
 
@@ -51,12 +60,14 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
         // can be two sessions old, which made the day's change far too large.
         const r = await yahooChart(symbol, '5d', '1d', 4_000);
         const m = r.meta;
-        const price = m.regularMarketPrice;
+        const barPrice = stalePrice(r);
+        const stale = barPrice !== undefined;
+        const price = barPrice ?? m.regularMarketPrice;
         // Futures and FX: Yahoo's daily bars often carry stale closes (Brent, NG, grains, JPYINR were
         // off by 2-10%), while the 1d chart's chartPreviousClose is the prior settlement. Indices and
         // stocks keep daily bars, since for Indian indices the 1d value can be two sessions old.
         let settle: number | undefined;
-        if (SETTLEMENT_TYPES.has(m.instrumentType)) {
+        if (!stale && SETTLEMENT_TYPES.has(m.instrumentType)) {
           settle = (await yahooChart(symbol, '1d', '1h', 60_000).catch(() => null))?.meta?.chartPreviousClose;
         }
         const prev = settle ?? previousClose(r) ?? m.chartPreviousClose ?? m.previousClose ?? price;
@@ -65,9 +76,9 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
           price,
           change: price - prev,
           changePct: prev ? ((price - prev) / prev) * 100 : 0,
-          volume: m.regularMarketVolume ?? 0,
-          high52: m.fiftyTwoWeekHigh ?? 0,
-          low52: m.fiftyTwoWeekLow ?? 0,
+          volume: stale ? 0 : m.regularMarketVolume ?? 0,
+          high52: stale ? 0 : m.fiftyTwoWeekHigh ?? 0,
+          low52: stale ? 0 : m.fiftyTwoWeekLow ?? 0,
           currency: m.currency ?? '',
           time: (m.regularMarketTime ?? 0) * 1000,
         };
