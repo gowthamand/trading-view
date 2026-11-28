@@ -1,4 +1,4 @@
-import { getHistory } from './_yahoo.js';
+import { getHistory } from './yahoo.js';
 
 export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;

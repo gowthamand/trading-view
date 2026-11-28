@@ -1,5 +1,7 @@
 /** Shared Yahoo Finance helpers, used by the Vercel functions in api/ and by src/server.ts locally. */
-import { ORO_PREFIX, isOro, oroQuote } from './_oropocket.js';
+import { ORO_PREFIX, isOro, oroQuote } from './oropocket.js';
+import { isSina, sinaHistory, sinaQuote } from './sina.js';
+import { isTv, tvHistory, tvQuote } from './tradingview.js';
 
 const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 const UA = { 'User-Agent': 'Mozilla/5.0' };
@@ -46,6 +48,13 @@ function stalePrice(r: any): number | undefined {
   return valid[valid.length - 1];
 }
 
+async function barRange(symbol: string): Promise<[number, number]> {
+  const q = (await yahooChart(symbol, '1y', '1d', 600_000).catch(() => null))?.indicators?.quote?.[0];
+  const highs: number[] = (q?.high ?? []).filter((v: number | null) => v != null);
+  const lows: number[] = (q?.low ?? []).filter((v: number | null) => v != null);
+  return [highs.length ? Math.max(...highs) : 0, lows.length ? Math.min(...lows) : 0];
+}
+
 /** Instrument types whose previous close comes from the 1d chart's settlement, not daily bars. */
 const SETTLEMENT_TYPES = new Set(['FUTURE', 'ALTSYMBOL', 'CURRENCY']);
 
@@ -56,6 +65,8 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
     symbols.map(async (symbol) => {
       try {
         if (isOro(symbol)) return await oroQuote(symbol);
+        if (isSina(symbol)) return await sinaQuote(symbol);
+        if (isTv(symbol)) return await tvQuote(symbol);
         // Daily bars, not the 1d/5m chart: for Indian indices Yahoo's 1d `chartPreviousClose`
         // can be two sessions old, which made the day's change far too large.
         const r = await yahooChart(symbol, '5d', '1d', 4_000);
@@ -71,14 +82,15 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
           settle = (await yahooChart(symbol, '1d', '1h', 60_000).catch(() => null))?.meta?.chartPreviousClose;
         }
         const prev = settle ?? previousClose(r) ?? m.chartPreviousClose ?? m.previousClose ?? price;
+        const [high52, low52] = stale ? await barRange(symbol) : [m.fiftyTwoWeekHigh ?? 0, m.fiftyTwoWeekLow ?? 0];
         return {
           symbol,
           price,
           change: price - prev,
           changePct: prev ? ((price - prev) / prev) * 100 : 0,
           volume: stale ? 0 : m.regularMarketVolume ?? 0,
-          high52: stale ? 0 : m.fiftyTwoWeekHigh ?? 0,
-          low52: stale ? 0 : m.fiftyTwoWeekLow ?? 0,
+          high52,
+          low52,
           currency: m.currency ?? '',
           time: (m.regularMarketTime ?? 0) * 1000,
         };
@@ -93,19 +105,31 @@ export async function getQuotes(symbolsParam: string | null | undefined) {
 export async function getHistory(symbolParam: unknown, rangeParam: unknown, intervalParam: unknown): Promise<{ t: number; c: number }[]> {
   const symbol = String(symbolParam ?? '');
   if (isOro(symbol)) return oroHistory(symbol, rangeParam, intervalParam);
+  if (isSina(symbol)) return sinaHistory(symbol, rangeParam);
+  if (isTv(symbol)) return tvHistory(symbol, rangeParam, intervalParam);
   const range = /^(1d|5d|1mo|3mo|6mo|1y|2y|3y|5y|10y|max)$/.test(String(rangeParam)) ? String(rangeParam) : '1y';
   const interval = /^(5m|15m|30m|1h|1d|1wk|1mo)$/.test(String(intervalParam)) ? String(intervalParam) : '1mo';
   // Yahoo's 1d range starts at midnight exchange time, so futures (session opens the evening before)
   // show only a few minutes after midnight. Fetch 5d instead and keep just the current session.
   const intraday = range === '1d';
+  const fallback = range === '1d' || range === '5d';
   const r = await yahooChart(symbol, intraday ? '5d' : range, interval, 10_000);
+  const pts = chartPoints(r);
+  if (!intraday) return pts.length ? pts : fallback ? dailyFallback(symbol, range) : pts;
+  // FX and crypto trade around the clock with sparse overnight ticks: show the last 24h instead.
+  const live = ['CURRENCY', 'CRYPTOCURRENCY'].includes(r.meta?.instrumentType) ? lastDay(pts) : currentSession(pts);
+  return live.length ? live : dailyFallback(symbol, range);
+}
+
+function chartPoints(r: any): { t: number; c: number }[] {
   const closes: (number | null)[] = r.indicators?.quote?.[0]?.close ?? [];
-  const pts: { t: number; c: number }[] = (r.timestamp ?? [])
+  return (r.timestamp ?? [])
     .map((t: number, i: number) => ({ t: t * 1000, c: closes[i] }))
     .filter((p: { c: number | null }) => p.c != null);
-  if (!intraday) return pts;
-  // FX and crypto trade around the clock with sparse overnight ticks: show the last 24h instead.
-  return ['CURRENCY', 'CRYPTOCURRENCY'].includes(r.meta?.instrumentType) ? lastDay(pts) : currentSession(pts);
+}
+
+async function dailyFallback(symbol: string, range: string) {
+  return chartPoints(await yahooChart(symbol, '1mo', '1d', 600_000)).slice(range === '5d' ? -6 : -2);
 }
 
 /** OroPocket metal -> the Yahoo future whose INR value drives its chart. */

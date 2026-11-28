@@ -163,7 +163,15 @@ export class Tracker {
       { symbol: 'PL1!', yahoo: 'PL=F', name: 'Platinum', group: 'Metals' },
       { symbol: 'PA1!', yahoo: 'PA=F', name: 'Palladium', group: 'Metals' },
       { symbol: 'ALI1!', yahoo: 'ALI=F', name: 'Aluminum', group: 'Metals' },
+      { symbol: 'ZNC1!', yahoo: 'SINA:ZSD', name: 'Zinc', group: 'Metals' },
+      { symbol: 'NI1!', yahoo: 'SINA:NID', name: 'Nickel', group: 'Metals' },
+      { symbol: 'PB1!', yahoo: 'SINA:PBD', name: 'Lead', group: 'Metals' },
+      { symbol: 'SN1!', yahoo: 'SINA:SND', name: 'Tin', group: 'Metals' },
+      { symbol: 'COB1!', yahoo: 'TV:COMEX:COB1!', name: 'Cobalt', group: 'Metals' },
+      { symbol: 'LTH1!', yahoo: 'TV:COMEX:LTH1!', name: 'Lithium Hydroxide', group: 'Metals' },
+      { symbol: 'UX1!', yahoo: 'TV:COMEX:UX1!', name: 'Uranium', group: 'Metals' },
       { symbol: 'TIO1!', yahoo: 'TIO=F', name: 'Iron Ore', group: 'Metals' },
+      { symbol: 'HRC1!', yahoo: 'HRC=F', name: 'Steel HRC (US)', group: 'Metals' },
       { symbol: 'BRENT', yahoo: 'BZ=F', name: 'Brent Crude', group: 'Energy' },
       { symbol: 'CL1!', yahoo: 'CL=F', name: 'WTI Crude', group: 'Energy' },
       { symbol: 'NG1!', yahoo: 'NG=F', name: 'Natural Gas', group: 'Energy' },
@@ -623,9 +631,11 @@ export class Tracker {
   /** Fetch history for the selected instrument. `silent` = background refresh: no spinner, keep hover. */
   async loadHistory(silent = false) {
     const req = ++this.historyReq;
-    if (!silent) { this.chartLoading.set(true); this.hover.set(-1); }
+    const def = this.chartDef();
+    const cfg = this.rangeCfg();
+    if (!silent) { this.chartLoading.set(true); this.hover.set(-1); this.series.set([]); }
     try {
-      const pts = await this.md.history(this.chartDef().yahoo, this.rangeCfg().range, this.rangeCfg().interval);
+      const pts = await this.md.history(def.yahoo, cfg.range, cfg.interval);
       if (req === this.historyReq) this.series.set(pts); // ignore stale responses after a symbol/range switch
     } catch {
       if (!silent && req === this.historyReq) this.series.set([]);
@@ -635,7 +645,7 @@ export class Tracker {
   }
 
   selectChart(symbol: string) { this.chartSymbol.set(symbol); this.loadHistory(); }
-  setRange(r: Range) { this.range.set(r); this.loadHistory(); }
+  setRange(r: Range) { this.range.set(r); this.series.set([]); this.loadHistory(); }
   setTab(t: Tab) { this.tab.set(t); this.query.set(''); this.groupFilter.set(null); }
   sort(k: SortKey) {
     if (this.sortKey() === k) this.sortAsc.update((v) => !v);

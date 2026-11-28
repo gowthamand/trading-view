@@ -62,6 +62,6 @@ export class MarketData {
   }
 
   history(symbol: string, range = '1y', interval = '1mo') {
-    return firstValueFrom(this.http.get<Point[]>('/api/history', { params: { symbol, range, interval } }));
+    return firstValueFrom(this.http.get<Point[]>('/api/history', { params: { symbol, range, interval, _: String(Date.now()) } }));
   }
 }
